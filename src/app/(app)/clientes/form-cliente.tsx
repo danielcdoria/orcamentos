@@ -20,7 +20,7 @@ export function FormCliente({ cliente }: { cliente?: Cliente }) {
   };
 
   return (
-    <form action={acao} className="flex flex-col gap-4">
+    <form action={acao} className="flex flex-col gap-5">
       <label className="flex flex-col gap-1">
         <span className={estiloRotulo}>Nome *</span>
         <input name="nome" required maxLength={120} defaultValue={v.nome} className={estiloCampo} />
@@ -51,7 +51,7 @@ export function FormCliente({ cliente }: { cliente?: Cliente }) {
 
       {estado.erro && <p role="alert" className={estiloErro}>{estado.erro}</p>}
 
-      <div className="flex gap-3">
+      <div className="mt-2 flex gap-3">
         <Link href="/clientes" className={`flex-1 ${estiloBotaoSecundario}`}>
           Cancelar
         </Link>

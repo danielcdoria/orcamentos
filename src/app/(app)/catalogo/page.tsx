@@ -20,9 +20,9 @@ export default async function PaginaCatalogo(props: PageProps<"/catalogo">) {
   });
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Catálogo</h1>
+        <h1 className="text-2xl font-bold">Catálogo</h1>
         <Link href="/catalogo/novo" className={`${estiloBotao} py-2`}>
           + Novo
         </Link>
@@ -49,7 +49,7 @@ export default async function PaginaCatalogo(props: PageProps<"/catalogo">) {
         <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
           {itens.map((item) => (
             <li key={item.id}>
-              <Link href={`/catalogo/${item.id}`} className="flex items-center justify-between gap-3 px-4 py-3">
+              <Link href={`/catalogo/${item.id}`} className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-gray-50">
                 <span className="font-medium">{item.descricao}</span>
                 <span className="shrink-0 text-sm text-gray-600">
                   {formatarCentavos(item.preco)}/{item.unidade}

@@ -16,8 +16,8 @@ export default async function EditarCliente(props: PageProps<"/clientes/[id]">) 
   if (!cliente) notFound();
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-bold">Editar cliente</h1>
+    <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-bold">Editar cliente</h1>
       <FormCliente cliente={cliente} />
     </div>
   );

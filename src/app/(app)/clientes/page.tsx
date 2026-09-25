@@ -13,9 +13,9 @@ export default async function PaginaClientes() {
   });
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Clientes</h1>
+        <h1 className="text-2xl font-bold">Clientes</h1>
         <Link href="/clientes/novo" className={`${estiloBotao} py-2`}>
           + Novo
         </Link>
@@ -27,9 +27,9 @@ export default async function PaginaClientes() {
         <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
           {clientes.map((c) => (
             <li key={c.id}>
-              <Link href={`/clientes/${c.id}`} className="block px-4 py-3">
+              <Link href={`/clientes/${c.id}`} className="block px-5 py-4 hover:bg-gray-50">
                 <span className="block font-medium">{c.nome}</span>
-                {c.telefone && <span className="block text-sm text-gray-600">{c.telefone}</span>}
+                {c.telefone && <span className="mt-0.5 block text-sm text-gray-600">{c.telefone}</span>}
               </Link>
             </li>
           ))}

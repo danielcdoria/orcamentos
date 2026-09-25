@@ -69,7 +69,7 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | `src/app/(app)/layout.tsx` | Moldura das páginas internas: confere o login e mostra o nome da empresa e o botão Sair. |
 | `src/app/(app)/actions.ts` | Ação `sair()`: apaga a sessão e volta para o login. |
 | `src/app/(app)/page.tsx` | Página inicial (`/`). Só redireciona para `/orcamentos`. |
-| `src/app/(app)/menu.tsx` | Menu fixo no rodapé (Orçamentos, Clientes, Catálogo). |
+| `src/app/(app)/menu.tsx` | Menu principal (Orçamentos, Clientes, Catálogo): abas no topo no computador, barra fixa no rodapé no celular. |
 | `src/app/(app)/orcamentos/page.tsx` | Lista de orçamentos (provisória, passo 4b). |
 | `src/app/(app)/clientes/page.tsx` | Lista de clientes (ordem alfabética). |
 | `src/app/(app)/clientes/novo/page.tsx` | Tela de novo cliente. |

@@ -14,17 +14,20 @@ export default async function LayoutInterno({ children }: LayoutProps<"/">) {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-        <span className="truncate font-semibold">{empresaNome}</span>
-        <form action={sair}>
-          <button type="submit" className="px-2 py-1 text-sm text-gray-600">
-            Sair
-          </button>
-        </form>
+      <header className="border-b border-gray-200">
+        <div className="mx-auto flex max-w-3xl items-center gap-6 px-5 py-4">
+          <span className="truncate text-lg font-semibold">{empresaNome}</span>
+          {/* No computador o menu fica aqui no topo; no celular ele vai para o rodapé */}
+          <Menu />
+          <form action={sair} className="ml-auto">
+            <button type="submit" className="px-2 py-1 text-sm text-gray-600 hover:text-gray-900">
+              Sair
+            </button>
+          </form>
+        </div>
       </header>
-      {/* pb-24 deixa espaço para o conteúdo não ficar escondido atrás do menu */}
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 pt-6 pb-24">{children}</main>
-      <Menu />
+      {/* pb-28 no celular deixa espaço para o conteúdo não ficar escondido atrás do menu */}
+      <main className="mx-auto w-full max-w-3xl flex-1 px-5 pt-8 pb-28 md:pt-10 md:pb-12">{children}</main>
     </div>
   );
 }

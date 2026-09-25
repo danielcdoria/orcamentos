@@ -34,7 +34,7 @@ export function FormItem({ item }: { item?: Item }) {
   }
 
   return (
-    <form action={acao} className="flex flex-col gap-4">
+    <form action={acao} className="flex flex-col gap-5">
       <label className="flex flex-col gap-1">
         <span className={estiloRotulo}>Descrição *</span>
         <input
@@ -47,7 +47,7 @@ export function FormItem({ item }: { item?: Item }) {
         />
       </label>
 
-      <div className="flex gap-3">
+      <div className="mt-2 flex gap-3">
         <label className="flex flex-1 flex-col gap-1">
           <span className={estiloRotulo}>Preço (R$) *</span>
           <input
@@ -80,7 +80,7 @@ export function FormItem({ item }: { item?: Item }) {
 
       {estado.erro && <p role="alert" className={estiloErro}>{estado.erro}</p>}
 
-      <div className="flex gap-3">
+      <div className="mt-2 flex gap-3">
         <Link href="/catalogo" className={`flex-1 ${estiloBotaoSecundario}`}>
           Cancelar
         </Link>

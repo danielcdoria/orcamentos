@@ -12,8 +12,8 @@ export default async function EditarItem(props: PageProps<"/catalogo/[id]">) {
   if (!item) notFound();
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-bold">Editar item</h1>
+    <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-bold">Editar item</h1>
       <FormItem
         item={{
           id: item.id,
