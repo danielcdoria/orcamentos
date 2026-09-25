@@ -89,6 +89,7 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | `src/app/(app)/catalogo/form-item.tsx` | Formulário de item (descrição, preço, unidade). |
 | `src/app/(app)/catalogo/actions.ts` | `salvarItem` e `apagarItem`. |
 | `src/app/orcamento/[token]/page.tsx` | **Página pública** do orçamento (sem login), a que o cliente abre. O `token` é um código de 64 caracteres sorteado pelo banco. Também define o título/descrição da prévia no WhatsApp, pede ao Google para não indexar e registra a abertura (ver `src/lib/abertura.ts`). |
+| `src/app/orcamento/[token]/not-found.tsx` | Mensagem para o **cliente** quando o link do orçamento está errado (sem link para o login). |
 | `src/app/not-found.tsx` | Página "não encontrada" (endereço inexistente ou de outra empresa). |
 | `src/app/favicon.ico` | Ícone da aba do navegador. |
 | `public/` | Imagens e arquivos servidos direto pelo endereço (`/arquivo.svg`). Vazia por enquanto (o `.gitkeep` só existe para o git guardar a pasta). |
