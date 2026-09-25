@@ -11,7 +11,7 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 | `package-lock.json` | Registra a versão exata de cada biblioteca instalada. Gerado pelo npm, não se edita à mão. |
 | `node_modules/` | Onde as bibliotecas ficam instaladas. Não vai para o git; `npm install` recria. |
 | `tsconfig.json` | Configuração do TypeScript. |
-| `next.config.ts` | Configuração do Next.js. |
+| `next.config.ts` | Configuração do Next.js. Define a raiz do projeto (`turbopack.root`) porque existe um `package-lock.json` vazio em `~/` que confundia o Next. |
 | `postcss.config.mjs` | Liga o Tailwind ao processo de build do CSS. |
 | `eslint.config.mjs` | Regras do ESLint, que aponta erros e más práticas no código (`npm run lint`). |
 | `next-env.d.ts` | Tipos do Next.js para o TypeScript. Gerado automaticamente. |
