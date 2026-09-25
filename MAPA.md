@@ -39,7 +39,7 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 | `src/lib/auth.ts` | **Porta de entrada.** `exigirSessao()` confere o login e devolve o `empresaId`. Toda página interna e toda ação que grava dados deve chamar essa função e usar o `empresaId` dela nas consultas. |
 | `src/lib/sessao.ts` | Cria, lê e apaga a sessão (o cookie `sessao` + a linha na tabela Sessao). Login dura 30 dias. |
 | `src/lib/senha.ts` | Embaralha a senha (hash com scrypt) e confere a senha digitada no login. |
-| `src/lib/dinheiro.ts` | Funções de dinheiro: `formatarCentavos` (1250 → "R$ 12,50"), `lerReais` ("12,50" → 1250) e `calcularSubtotal` (quantidade × preço, arredondado) e `centavosParaTexto` (1250 → "12,50", para preencher campos). |
+| `src/lib/dinheiro.ts` | Funções de dinheiro: `formatarCentavos` (1250 → "R$ 12,50"), `lerReais` ("12,50" → 1250) e `calcularSubtotal` (quantidade × preço, arredondado) `centavosParaTexto` (1250 → "12,50", para preencher campos), `lerQuantidade` ("2,5" → 2.5) e `quantidadeParaTexto`. |
 
 ## Componentes (`src/components/`)
 
@@ -70,7 +70,10 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | `src/app/(app)/actions.ts` | Ação `sair()`: apaga a sessão e volta para o login. |
 | `src/app/(app)/page.tsx` | Página inicial (`/`). Só redireciona para `/orcamentos`. |
 | `src/app/(app)/menu.tsx` | Menu principal (Orçamentos, Clientes, Catálogo): abas no topo no computador, barra fixa no rodapé no celular. |
-| `src/app/(app)/orcamentos/page.tsx` | Lista de orçamentos (provisória, passo 4b). |
+| `src/app/(app)/orcamentos/page.tsx` | Lista de orçamentos: mais recentes primeiro, com cliente, número, data, status e total (mostra os 100 últimos). |
+| `src/app/(app)/orcamentos/novo/page.tsx` | Tela de novo orçamento. Busca clientes e o catálogo inteiro e entrega ao formulário. |
+| `src/app/(app)/orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento: escolher cliente, buscar e adicionar itens, editar quantidade e preço, total ao vivo, observação. |
+| `src/app/(app)/orcamentos/actions.ts` | `salvarOrcamento`: valida tudo, **recalcula** subtotais e total no servidor, gera o número sequencial da empresa e a validade (hoje + `diasValidade`). |
 | `src/app/(app)/clientes/page.tsx` | Lista de clientes (ordem alfabética). |
 | `src/app/(app)/clientes/novo/page.tsx` | Tela de novo cliente. |
 | `src/app/(app)/clientes/[id]/page.tsx` | Tela de editar cliente. |

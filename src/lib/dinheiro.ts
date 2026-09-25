@@ -33,3 +33,17 @@ export function calcularSubtotal(quantidade: number, precoUnitarioCentavos: numb
 export function centavosParaTexto(centavos: number): string {
   return (centavos / 100).toFixed(2).replace(".", ",");
 }
+
+// "2,5" / "2.5" / "10" -> 2.5 / 2.5 / 10. Aceita até 3 casas decimais.
+// Devolve null se o texto não for uma quantidade válida (maior que zero).
+export function lerQuantidade(texto: string): number | null {
+  const limpo = texto.trim().replace(",", ".");
+  if (!/^\d+(\.\d{1,3})?$/.test(limpo)) return null;
+  const valor = Number(limpo);
+  return valor > 0 ? valor : null;
+}
+
+// 2.5 -> "2,5" (para mostrar na tela)
+export function quantidadeParaTexto(quantidade: number): string {
+  return String(quantidade).replace(".", ",");
+}
