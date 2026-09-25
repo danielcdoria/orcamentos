@@ -73,14 +73,15 @@ export async function salvarOrcamento(dados: DadosOrcamento): Promise<EstadoOrca
   // O número é "maior número da empresa + 1". Se dois orçamentos forem salvos no mesmo
   // instante, os dois podem calcular o mesmo número; o banco recusa o segundo
   // (regra @@unique) e nós tentamos de novo.
+  let orcamentoId = "";
   for (let tentativa = 0; tentativa < 3; tentativa++) {
     try {
-      await prisma.$transaction(async (tx) => {
+      orcamentoId = await prisma.$transaction(async (tx) => {
         const ultimo = await tx.orcamento.aggregate({
           where: { empresaId },
           _max: { numero: true },
         });
-        await tx.orcamento.create({
+        const criado = await tx.orcamento.create({
           data: {
             empresaId,
             clienteId: cliente.id,
@@ -91,6 +92,7 @@ export async function salvarOrcamento(dados: DadosOrcamento): Promise<EstadoOrca
             itens: { create: linhas },
           },
         });
+        return criado.id;
       });
       break;
     } catch (erro) {
@@ -101,5 +103,5 @@ export async function salvarOrcamento(dados: DadosOrcamento): Promise<EstadoOrca
   }
 
   revalidatePath("/orcamentos");
-  redirect("/orcamentos");
+  redirect(`/orcamentos/${orcamentoId}`); // abre o orçamento recém-criado
 }

@@ -105,6 +105,10 @@ model Orcamento {
   status     StatusOrcamento @default(rascunho)
   criadoEm   DateTime        @default(now())
 
+  // Código secreto do link público (/orcamento/<token>). O próprio banco sorteia
+  // 64 caracteres aleatórios; é impossível adivinhar o link de outro orçamento.
+  token String @unique @default(dbgenerated("replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')"))
+
   empresa Empresa         @relation(fields: [empresaId], references: [id])
   cliente Cliente         @relation(fields: [clienteId], references: [id])
   itens   OrcamentoItem[]

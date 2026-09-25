@@ -28,7 +28,7 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 | `.env.example` | Modelo do `.env` sem senhas. Mostra quais variáveis o projeto precisa. Vai para o git. |
 | `prisma.config.ts` | Diz ao Prisma onde está o schema, onde ficam as migrations e de onde vem o endereço do banco (usa `DIRECT_URL`). |
 | `prisma/schema.prisma` | Descreve as tabelas do banco (como as `@Entity` do JPA): Empresa, Usuario (login), Sessao (logins abertos), Cliente, Item (catálogo), Orcamento e OrcamentoItem (linhas do orçamento). |
-| `prisma/migrations/` | Histórico das mudanças no banco. Cada pasta é um `.sql` que o Prisma gerou e aplicou. **Não edite à mão.** |
+| `prisma/migrations/` | Histórico das mudanças no banco. Cada pasta é um `.sql` que o Prisma gerou e aplicou. **Não edite à mão.** Depois de uma migration nova, **reinicie o `npm run dev`** (Ctrl + C e rodar de novo), senão o servidor continua usando a versão antiga do banco e dá `PrismaClientValidationError`. |
 | `src/generated/prisma/` | Código gerado pelo Prisma a partir do schema (`npx prisma generate`). Não vai para o git e não se edita. |
 | `src/lib/prisma.ts` | Cria a conexão com o banco que o site inteiro usa. Todo acesso ao banco começa com `import { prisma } from "@/lib/prisma"`. |
 
@@ -39,6 +39,8 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 | `src/lib/auth.ts` | **Porta de entrada.** `exigirSessao()` confere o login e devolve o `empresaId`. Toda página interna e toda ação que grava dados deve chamar essa função e usar o `empresaId` dela nas consultas. |
 | `src/lib/sessao.ts` | Cria, lê e apaga a sessão (o cookie `sessao` + a linha na tabela Sessao). Login dura 30 dias. |
 | `src/lib/senha.ts` | Embaralha a senha (hash com scrypt) e confere a senha digitada no login. |
+| `src/lib/formatos.ts` | Datas (`formatarData`, `formatarDataHora`, no fuso de Brasília) e `formatarQuantidade`. |
+| `src/lib/url.ts` | `urlBase()`: descobre o endereço do site (localhost ou Vercel) para montar links completos. |
 | `src/lib/dinheiro.ts` | Funções de dinheiro: `formatarCentavos` (1250 → "R$ 12,50"), `lerReais` ("12,50" → 1250) e `calcularSubtotal` (quantidade × preço, arredondado) `centavosParaTexto` (1250 → "12,50", para preencher campos), `lerQuantidade` ("2,5" → 2.5) e `quantidadeParaTexto`. |
 
 ## Componentes (`src/components/`)
@@ -70,10 +72,11 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | `src/app/(app)/actions.ts` | Ação `sair()`: apaga a sessão e volta para o login. |
 | `src/app/(app)/page.tsx` | Página inicial (`/`). Só redireciona para `/orcamentos`. |
 | `src/app/(app)/menu.tsx` | Menu principal (Orçamentos, Clientes, Catálogo): abas no topo no computador, barra fixa no rodapé no celular. |
-| `src/app/(app)/orcamentos/page.tsx` | Lista de orçamentos: mais recentes primeiro, com cliente, número, data, status e total (mostra os 100 últimos). |
+| `src/app/(app)/orcamentos/page.tsx` | Lista de orçamentos: mais recentes primeiro, com cliente, número, data, status e total (mostra os 100 últimos). Tocar abre o orçamento. |
+| `src/app/(app)/orcamentos/[id]/page.tsx` | Tela interna de um orçamento: resumo, itens e o link da página pública. |
 | `src/app/(app)/orcamentos/novo/page.tsx` | Tela de novo orçamento. Busca clientes e o catálogo inteiro e entrega ao formulário. |
 | `src/app/(app)/orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento: escolher cliente, buscar e adicionar itens, editar quantidade e preço, total ao vivo, observação. |
-| `src/app/(app)/orcamentos/actions.ts` | `salvarOrcamento`: valida tudo, **recalcula** subtotais e total no servidor, gera o número sequencial da empresa e a validade (hoje + `diasValidade`). |
+| `src/app/(app)/orcamentos/actions.ts` | `salvarOrcamento`: valida tudo, **recalcula** subtotais e total no servidor, gera o número sequencial da empresa e a validade (hoje + `diasValidade`), e abre o orçamento criado. |
 | `src/app/(app)/clientes/page.tsx` | Lista de clientes (ordem alfabética). |
 | `src/app/(app)/clientes/novo/page.tsx` | Tela de novo cliente. |
 | `src/app/(app)/clientes/[id]/page.tsx` | Tela de editar cliente. |
@@ -84,6 +87,7 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | `src/app/(app)/catalogo/[id]/page.tsx` | Tela de editar item (com botão Apagar). |
 | `src/app/(app)/catalogo/form-item.tsx` | Formulário de item (descrição, preço, unidade). |
 | `src/app/(app)/catalogo/actions.ts` | `salvarItem` e `apagarItem`. |
+| `src/app/orcamento/[token]/page.tsx` | **Página pública** do orçamento (sem login), a que o cliente abre. O `token` é um código de 64 caracteres sorteado pelo banco. Também define o título/descrição da prévia no WhatsApp e pede ao Google para não indexar. |
 | `src/app/not-found.tsx` | Página "não encontrada" (endereço inexistente ou de outra empresa). |
 | `src/app/favicon.ico` | Ícone da aba do navegador. |
 | `public/` | Imagens e arquivos servidos direto pelo endereço (`/arquivo.svg`). Vazia por enquanto (o `.gitkeep` só existe para o git guardar a pasta). |

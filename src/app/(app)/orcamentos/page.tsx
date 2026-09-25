@@ -2,14 +2,8 @@ import Link from "next/link";
 import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatarCentavos } from "@/lib/dinheiro";
+import { formatarData } from "@/lib/formatos";
 import { estiloBotao } from "@/components/estilos";
-
-const formatarData = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  timeZone: "America/Sao_Paulo",
-});
 
 const rotuloStatus = { rascunho: "Rascunho", enviado: "Enviado" } as const;
 
@@ -44,14 +38,19 @@ export default async function PaginaOrcamentos() {
       ) : (
         <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
           {orcamentos.map((o) => (
-            <li key={o.id} className="flex items-center justify-between gap-4 px-5 py-4">
+            <li key={o.id}>
+              <Link
+                href={`/orcamentos/${o.id}`}
+                className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-gray-50"
+              >
               <div className="min-w-0">
                 <span className="block truncate font-medium">{o.cliente.nome}</span>
                 <span className="mt-0.5 block text-sm text-gray-600">
-                  Nº {o.numero} · {formatarData.format(o.criadoEm)} · {rotuloStatus[o.status]}
+                  Nº {o.numero} · {formatarData(o.criadoEm)} · {rotuloStatus[o.status]}
                 </span>
               </div>
               <span className="shrink-0 font-semibold">{formatarCentavos(o.total)}</span>
+              </Link>
             </li>
           ))}
         </ul>
