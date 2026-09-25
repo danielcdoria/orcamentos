@@ -1,7 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Descrição das tabelas do banco. Cada "model" vira uma tabela.
+// Depois de mudar este arquivo, rode: npx prisma migrate dev --name descricao-da-mudanca
 
 generator client {
   provider = "prisma-client"
@@ -10,4 +8,92 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// REGRAS DO PROJETO
+// 1. Dinheiro sempre em CENTAVOS, como Int. R$ 12,50 é guardado como 1250.
+// 2. Todo registro tem empresaId, e toda consulta filtra por ele.
+//    É isso que permite várias empresas usando o mesmo sistema sem ver os dados umas das outras.
+
+model Empresa {
+  id                String   @id @default(cuid())
+  nome              String
+  logoUrl           String?
+  telefone          String?
+  condicaoPagamento String? // ex.: "50% na aprovação, 50% na entrega"
+  diasValidade      Int      @default(15) // validade padrão dos orçamentos, em dias
+  criadoEm          DateTime @default(now())
+
+  clientes       Cliente[]
+  itens          Item[]
+  orcamentos     Orcamento[]
+  orcamentoItens OrcamentoItem[]
+}
+
+model Cliente {
+  id         String   @id @default(cuid())
+  empresaId  String
+  nome       String
+  telefone   String?
+  observacao String?
+  criadoEm   DateTime @default(now())
+
+  empresa    Empresa     @relation(fields: [empresaId], references: [id])
+  orcamentos Orcamento[]
+
+  @@index([empresaId, nome])
+}
+
+// Item do catálogo: o que a empresa costuma vender (produto ou serviço).
+model Item {
+  id        String @id @default(cuid())
+  empresaId String
+  descricao String
+  preco     Int // em centavos
+  unidade   String // ex.: "un", "m²", "h", "kg"
+
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId, descricao])
+}
+
+enum StatusOrcamento {
+  rascunho
+  enviado
+}
+
+model Orcamento {
+  id         String          @id @default(cuid())
+  empresaId  String
+  clienteId  String
+  numero     Int // sequencial por empresa: 1, 2, 3...
+  total      Int // em centavos (soma dos subtotais)
+  observacao String?
+  validoAte  DateTime
+  status     StatusOrcamento @default(rascunho)
+  criadoEm   DateTime        @default(now())
+
+  empresa Empresa         @relation(fields: [empresaId], references: [id])
+  cliente Cliente         @relation(fields: [clienteId], references: [id])
+  itens   OrcamentoItem[]
+
+  @@unique([empresaId, numero]) // duas empresas podem ter o orçamento nº 1, a mesma empresa não
+  @@index([empresaId, criadoEm])
+}
+
+// Linha de um orçamento. Guarda uma CÓPIA da descrição e do preço, e não um link
+// para o catálogo: se o preço do catálogo mudar amanhã, o orçamento antigo não muda.
+model OrcamentoItem {
+  id            String  @id @default(cuid())
+  empresaId     String
+  orcamentoId   String
+  descricao     String
+  quantidade    Decimal @db.Decimal(10, 3) // aceita 2,5 m² ou 1,5 h
+  precoUnitario Int // em centavos
+  subtotal      Int // em centavos: arredondamento de quantidade × precoUnitario
+
+  empresa   Empresa   @relation(fields: [empresaId], references: [id])
+  orcamento Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+
+  @@index([orcamentoId])
 }
