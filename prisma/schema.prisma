@@ -109,6 +109,10 @@ model Orcamento {
   // 64 caracteres aleatórios; é impossível adivinhar o link de outro orçamento.
   token String @unique @default(dbgenerated("replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')"))
 
+  // Quando o cliente abriu a página pública pela primeira vez, e quantas vezes abriu.
+  abertoEm    DateTime?
+  vezesAberto Int       @default(0)
+
   empresa Empresa         @relation(fields: [empresaId], references: [id])
   cliente Cliente         @relation(fields: [clienteId], references: [id])
   itens   OrcamentoItem[]

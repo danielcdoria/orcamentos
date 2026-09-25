@@ -5,6 +5,20 @@ import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData } from "@/lib/formatos";
 import { estiloBotao } from "@/components/estilos";
 
+// "Visto" em verde quando o cliente já abriu; "Não visto" em cinza quando não.
+function SeloAbertura({ abertoEm, vezes }: { abertoEm: Date | null; vezes: number }) {
+  if (!abertoEm) {
+    return (
+      <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">Não visto</span>
+    );
+  }
+  return (
+    <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+      Visto{vezes > 1 ? ` ${vezes}x` : ""}
+    </span>
+  );
+}
+
 const rotuloStatus = { rascunho: "Rascunho", enviado: "Enviado" } as const;
 
 export default async function PaginaOrcamentos() {
@@ -20,6 +34,8 @@ export default async function PaginaOrcamentos() {
       total: true,
       status: true,
       criadoEm: true,
+      abertoEm: true,
+      vezesAberto: true,
       cliente: { select: { nome: true } },
     },
   });
@@ -44,7 +60,10 @@ export default async function PaginaOrcamentos() {
                 className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-gray-50"
               >
               <div className="min-w-0">
-                <span className="block truncate font-medium">{o.cliente.nome}</span>
+                <span className="flex items-center gap-2">
+                  <span className="truncate font-medium">{o.cliente.nome}</span>
+                  <SeloAbertura abertoEm={o.abertoEm} vezes={o.vezesAberto} />
+                </span>
                 <span className="mt-0.5 block text-sm text-gray-600">
                   Nº {o.numero} · {formatarData(o.criadoEm)} · {rotuloStatus[o.status]}
                 </span>

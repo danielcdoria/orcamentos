@@ -1,6 +1,8 @@
 import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
+import { registrarAbertura, visitaContaComoAbertura } from "@/lib/abertura";
 import { prisma } from "@/lib/prisma";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData, formatarQuantidade } from "@/lib/formatos";
@@ -44,6 +46,11 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
   const { token } = await props.params;
   const o = await buscarOrcamento(token);
   if (!o) notFound();
+
+  // after(): grava a abertura DEPOIS de enviar a página, para não deixá-la mais lenta.
+  if (await visitaContaComoAbertura(o.empresaId)) {
+    after(() => registrarAbertura(o.id));
+  }
 
   const vencido = o.validoAte < new Date();
 

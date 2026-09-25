@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatarCentavos } from "@/lib/dinheiro";
-import { formatarData, formatarQuantidade } from "@/lib/formatos";
+import { formatarData, formatarDataHora, formatarQuantidade } from "@/lib/formatos";
 import { urlBase } from "@/lib/url";
 import { estiloBotao, estiloBotaoSecundario } from "@/components/estilos";
 
@@ -36,6 +36,18 @@ export default async function DetalheOrcamento(props: PageProps<"/orcamentos/[id
           {o.cliente.nome} · {formatarData(o.criadoEm)} · {rotuloStatus[o.status]}
         </p>
       </div>
+
+      <p
+        className={`rounded-lg px-4 py-3 text-sm ${
+          o.abertoEm ? "bg-green-50 text-green-800" : "bg-gray-50 text-gray-600"
+        }`}
+      >
+        {o.abertoEm
+          ? `O cliente abriu em ${formatarDataHora(o.abertoEm)}${
+              o.vezesAberto > 1 ? ` (${o.vezesAberto} vezes no total)` : ""
+            }.`
+          : "O cliente ainda não abriu este orçamento."}
+      </p>
 
       <div className="flex items-center justify-between rounded-lg bg-gray-100 px-4 py-4">
         <span className="font-medium">Total</span>
