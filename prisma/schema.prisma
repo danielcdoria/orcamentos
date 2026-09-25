@@ -24,12 +24,27 @@ model Empresa {
   diasValidade      Int      @default(15) // validade padrão dos orçamentos, em dias
   criadoEm          DateTime @default(now())
 
+  // Mensagem do botão "Enviar no WhatsApp". {cliente}, {link} etc. são trocados na hora.
+  mensagemEnvio String @default("Olá {cliente}, segue o orçamento que combinamos: {link}")
+
+  logo           EmpresaLogo?
   usuario        Usuario?
   sessoes        Sessao[]
   clientes       Cliente[]
   itens          Item[]
   orcamentos     Orcamento[]
   orcamentoItens OrcamentoItem[]
+}
+
+// A imagem do logo fica no próprio banco, separada da Empresa para não ser carregada
+// à toa em toda consulta. É servida pelo endereço /logo/<empresaId> (src/app/logo).
+model EmpresaLogo {
+  empresaId    String   @id
+  dados        Bytes // a imagem em si
+  tipo         String // "image/png", "image/jpeg" ou "image/webp"
+  atualizadoEm DateTime @updatedAt
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 }
 
 // Quem faz login. Um usuário por empresa (por isso empresaId é @unique).

@@ -6,6 +6,7 @@ import { registrarAbertura, visitaContaComoAbertura } from "@/lib/abertura";
 import { prisma } from "@/lib/prisma";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData, formatarQuantidade } from "@/lib/formatos";
+import { urlBase } from "@/lib/url";
 import { BotaoPdf } from "./botao-pdf";
 
 // PÁGINA PÚBLICA do orçamento: /orcamento/<token>
@@ -38,7 +39,13 @@ export async function generateMetadata(props: PageProps<"/orcamento/[token]">): 
   return {
     title: titulo,
     description: descricao,
-    openGraph: { title: titulo, description: descricao, type: "website" },
+    openGraph: {
+      title: titulo,
+      description: descricao,
+      type: "website",
+      // o WhatsApp precisa do endereço completo da imagem para mostrar o logo na prévia
+      images: o.empresa.logoUrl ? [`${await urlBase()}${o.empresa.logoUrl}`] : undefined,
+    },
     robots: { index: false, follow: false }, // não aparecer no Google
   };
 }

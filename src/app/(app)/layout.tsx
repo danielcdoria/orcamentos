@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { exigirSessao } from "@/lib/auth";
 import { sair } from "./actions";
 import { Menu } from "./menu";
@@ -19,11 +20,16 @@ export default async function LayoutInterno({ children }: LayoutProps<"/">) {
           <span className="truncate text-lg font-semibold">{empresaNome}</span>
           {/* No computador o menu fica aqui no topo; no celular ele vai para o rodapé */}
           <Menu />
-          <form action={sair} className="ml-auto">
-            <button type="submit" className="px-2 py-1 text-sm text-gray-600 hover:text-gray-900">
-              Sair
-            </button>
-          </form>
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            <Link href="/configuracoes" className="px-2 py-1 text-sm text-gray-600 hover:text-gray-900">
+              Configurações
+            </Link>
+            <form action={sair}>
+              <button type="submit" className="px-2 py-1 text-sm text-gray-600 hover:text-gray-900">
+                Sair
+              </button>
+            </form>
+          </div>
         </div>
       </header>
       {/* pb-28 no celular deixa espaço para o conteúdo não ficar escondido atrás do menu */}
