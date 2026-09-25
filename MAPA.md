@@ -24,8 +24,9 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 
 | Arquivo / pasta | O que faz |
 |---|---|
-| `.env` | **Secreto.** Guarda `DATABASE_URL`, o endereço do banco na Neon. Nunca vai para o git. |
-| `prisma.config.ts` | Diz ao Prisma onde está o schema, onde ficam as migrations e de onde vem o endereço do banco. |
+| `.env` | **Secreto.** Guarda os endereços do banco na Neon. Nunca vai para o git. `DATABASE_URL` (com pooler) é usada pelo site; `DIRECT_URL` (conexão direta) é usada pelas migrations. |
+| `.env.example` | Modelo do `.env` sem senhas. Mostra quais variáveis o projeto precisa. Vai para o git. |
+| `prisma.config.ts` | Diz ao Prisma onde está o schema, onde ficam as migrations e de onde vem o endereço do banco (usa `DIRECT_URL`). |
 | `prisma/schema.prisma` | Descreve as tabelas do banco (como as `@Entity` do JPA). |
 
 ## Telas (`src/app/`)
