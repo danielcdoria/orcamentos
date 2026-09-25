@@ -110,8 +110,10 @@ model Orcamento {
   token String @unique @default(dbgenerated("replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')"))
 
   // Quando o cliente abriu a página pública pela primeira vez, e quantas vezes abriu.
-  abertoEm    DateTime?
-  vezesAberto Int       @default(0)
+  // Aberturas com menos de 30 minutos de diferença contam como uma só (ver src/lib/abertura.ts).
+  abertoEm         DateTime?
+  vezesAberto      Int       @default(0)
+  ultimaAberturaEm DateTime?
 
   empresa Empresa         @relation(fields: [empresaId], references: [id])
   cliente Cliente         @relation(fields: [clienteId], references: [id])

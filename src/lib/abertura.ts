@@ -28,14 +28,30 @@ export async function visitaContaComoAbertura(empresaId: string): Promise<boolea
   return true;
 }
 
+// Atualizar a página várias vezes seguidas não deve inflar o contador.
+// Só conta uma "vez" nova se a última abertura foi há mais de 30 minutos.
+const INTERVALO_MS = 30 * 60 * 1000;
+
 export async function registrarAbertura(orcamentoId: string) {
   const agora = new Date();
+  const limite = new Date(agora.getTime() - INTERVALO_MS);
+
+  // As 3 operações rodam em ordem, juntas.
   await prisma.$transaction([
-    prisma.orcamento.update({
-      where: { id: orcamentoId },
+    // 1. soma +1 só se nunca abriu ou se a última abertura foi antes do limite
+    prisma.orcamento.updateMany({
+      where: {
+        id: orcamentoId,
+        OR: [{ ultimaAberturaEm: null }, { ultimaAberturaEm: { lt: limite } }],
+      },
       data: { vezesAberto: { increment: 1 } },
     }),
-    // Só grava a data se ainda estiver vazia: guardamos a PRIMEIRA abertura.
+    // 2. anota esta abertura como a mais recente
+    prisma.orcamento.update({
+      where: { id: orcamentoId },
+      data: { ultimaAberturaEm: agora },
+    }),
+    // 3. só grava a data se ainda estiver vazia: guardamos a PRIMEIRA abertura
     prisma.orcamento.updateMany({
       where: { id: orcamentoId, abertoEm: null },
       data: { abertoEm: agora },

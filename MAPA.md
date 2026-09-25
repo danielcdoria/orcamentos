@@ -39,7 +39,7 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 | `src/lib/auth.ts` | **Porta de entrada.** `exigirSessao()` confere o login e devolve o `empresaId`. Toda página interna e toda ação que grava dados deve chamar essa função e usar o `empresaId` dela nas consultas. |
 | `src/lib/sessao.ts` | Cria, lê e apaga a sessão (o cookie `sessao` + a linha na tabela Sessao). Login dura 30 dias. |
 | `src/lib/senha.ts` | Embaralha a senha (hash com scrypt) e confere a senha digitada no login. |
-| `src/lib/abertura.ts` | Registro de abertura do link público. Decide se a visita conta (ignora robôs como a prévia do WhatsApp, a própria empresa logada e pré-carregamentos) e grava `abertoEm` (1ª vez) e `vezesAberto`. |
+| `src/lib/abertura.ts` | Registro de abertura do link público. Decide se a visita conta (ignora robôs como a prévia do WhatsApp, a própria empresa logada e pré-carregamentos) e grava `abertoEm` (1ª vez) e `vezesAberto`. Aberturas com menos de 30 min de diferença contam como uma só (`ultimaAberturaEm`). |
 | `src/lib/formatos.ts` | Datas (`formatarData`, `formatarDataHora`, no fuso de Brasília) e `formatarQuantidade`. |
 | `src/lib/url.ts` | `urlBase()`: descobre o endereço do site (localhost ou Vercel) para montar links completos. |
 | `src/lib/dinheiro.ts` | Funções de dinheiro: `formatarCentavos` (1250 → "R$ 12,50"), `lerReais` ("12,50" → 1250) e `calcularSubtotal` (quantidade × preço, arredondado) `centavosParaTexto` (1250 → "12,50", para preencher campos), `lerQuantidade` ("2,5" → 2.5) e `quantidadeParaTexto`. |

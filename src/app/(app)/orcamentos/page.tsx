@@ -5,15 +5,17 @@ import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData } from "@/lib/formatos";
 import { estiloBotao } from "@/components/estilos";
 
-// "Visto" em verde quando o cliente já abriu; "Não visto" em cinza quando não.
+// "Visto" em verde forte quando o cliente já abriu; "Não visto" em cinza quando não.
 function SeloAbertura({ abertoEm, vezes }: { abertoEm: Date | null; vezes: number }) {
   if (!abertoEm) {
     return (
-      <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">Não visto</span>
+      <span className="shrink-0 rounded-full border border-gray-300 px-2 py-0.5 text-xs text-gray-600">
+        Não visto
+      </span>
     );
   }
   return (
-    <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+    <span className="shrink-0 rounded-full bg-green-700 px-2 py-0.5 text-xs font-semibold text-white">
       Visto{vezes > 1 ? ` ${vezes}x` : ""}
     </span>
   );
