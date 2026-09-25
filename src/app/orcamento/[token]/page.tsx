@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData, formatarQuantidade } from "@/lib/formatos";
 import { urlBase } from "@/lib/url";
+import { formatarTelefone } from "@/lib/telefone";
 import { BotaoPdf } from "./botao-pdf";
 
 // PÁGINA PÚBLICA do orçamento: /orcamento/<token>
@@ -78,7 +79,7 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
           )}
           <div className="min-w-0">
             <p className="text-lg font-bold leading-tight">{o.empresa.nome}</p>
-            {o.empresa.telefone && <p className="text-sm text-gray-600">{o.empresa.telefone}</p>}
+            {o.empresa.telefone && <p className="text-sm text-gray-600">{formatarTelefone(o.empresa.telefone)}</p>}
           </div>
         </header>
 
@@ -104,7 +105,7 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
               <dd className="font-medium">
                 {o.cliente.nome}
                 {o.cliente.telefone && (
-                  <span className="font-normal text-gray-600"> · {o.cliente.telefone}</span>
+                  <span className="font-normal text-gray-600"> · {formatarTelefone(o.cliente.telefone)}</span>
                 )}
               </dd>
             </div>

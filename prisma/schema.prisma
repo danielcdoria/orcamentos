@@ -119,6 +119,7 @@ model Orcamento {
   validoAte  DateTime
   status     StatusOrcamento @default(rascunho)
   criadoEm   DateTime        @default(now())
+  enviadoEm  DateTime? // último envio pelo botão do WhatsApp
 
   // Código secreto do link público (/orcamento/<token>). O próprio banco sorteia
   // 64 caracteres aleatórios; é impossível adivinhar o link de outro orçamento.

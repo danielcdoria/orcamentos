@@ -5,7 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData, formatarDataHora, formatarQuantidade } from "@/lib/formatos";
 import { urlBase } from "@/lib/url";
-import { estiloBotao, estiloBotaoSecundario } from "@/components/estilos";
+import { montarMensagem } from "@/lib/mensagem";
+import { telefoneParaWhatsApp } from "@/lib/telefone";
+import { BotoesEnvio } from "./botoes-envio";
+import { estiloBotaoSecundario } from "@/components/estilos";
 
 const rotuloStatus = { rascunho: "Rascunho", enviado: "Enviado" } as const;
 
@@ -18,12 +21,25 @@ export default async function DetalheOrcamento(props: PageProps<"/orcamentos/[id
     where: { id, empresaId },
     include: {
       cliente: { select: { nome: true, telefone: true } },
+      empresa: { select: { nome: true, mensagemEnvio: true } },
       itens: { orderBy: { id: "asc" } },
     },
   });
   if (!o) notFound();
 
   const linkPublico = `${await urlBase()}/orcamento/${o.token}`;
+
+  // Mensagem já pronta do WhatsApp, a partir do modelo das Configurações.
+  const mensagem = montarMensagem(o.empresa.mensagemEnvio, {
+    cliente: o.cliente.nome,
+    link: linkPublico,
+    numero: String(o.numero),
+    total: formatarCentavos(o.total),
+    empresa: o.empresa.nome,
+  });
+  const telefone = telefoneParaWhatsApp(o.cliente.telefone);
+  // wa.me/<número>?text=<mensagem>. Sem número, o WhatsApp deixa escolher o contato.
+  const urlWhatsApp = `https://wa.me/${telefone ?? ""}?text=${encodeURIComponent(mensagem)}`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -36,6 +52,12 @@ export default async function DetalheOrcamento(props: PageProps<"/orcamentos/[id
           {o.cliente.nome} · {formatarData(o.criadoEm)} · {rotuloStatus[o.status]}
         </p>
       </div>
+
+      {o.enviadoEm && (
+        <p className="rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          Enviado pelo WhatsApp em {formatarDataHora(o.enviadoEm)}.
+        </p>
+      )}
 
       <p
         className={`rounded-lg px-4 py-3 text-sm ${
@@ -75,10 +97,17 @@ export default async function DetalheOrcamento(props: PageProps<"/orcamentos/[id
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
+      <BotoesEnvio
+        orcamentoId={o.id}
+        link={linkPublico}
+        urlWhatsApp={urlWhatsApp}
+        temTelefone={telefone !== null}
+      />
+
+      <div className="flex flex-col gap-1">
         {/* <a> comum (e não <Link>) de propósito: o <Link> do Next "pré-carrega" a página
-            em segundo plano, e isso contaria como se o cliente tivesse aberto. */}
-        <a href={linkPublico} target="_blank" rel="noopener" className={estiloBotao}>
+            em segundo plano. */}
+        <a href={linkPublico} target="_blank" rel="noopener" className={estiloBotaoSecundario}>
           Ver como o cliente vê
         </a>
         <p className="break-all text-center text-xs text-gray-500">{linkPublico}</p>

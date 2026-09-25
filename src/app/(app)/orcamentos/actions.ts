@@ -105,3 +105,15 @@ export async function salvarOrcamento(dados: DadosOrcamento): Promise<EstadoOrca
   revalidatePath("/orcamentos");
   redirect(`/orcamentos/${orcamentoId}`); // abre o orçamento recém-criado
 }
+
+// Chamado quando a pessoa toca em "Enviar no WhatsApp".
+// Marca como enviado e guarda a hora do envio (se reenviar, fica a hora do último envio).
+export async function marcarEnviado(orcamentoId: string) {
+  const { empresaId } = await exigirSessao();
+  await prisma.orcamento.updateMany({
+    where: { id: orcamentoId, empresaId },
+    data: { status: "enviado", enviadoEm: new Date() },
+  });
+  revalidatePath("/orcamentos");
+  revalidatePath(`/orcamentos/${orcamentoId}`);
+}

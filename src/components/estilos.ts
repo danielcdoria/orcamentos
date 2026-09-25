@@ -16,3 +16,6 @@ export const estiloBotaoPerigo =
   "rounded-lg border border-red-300 px-4 py-3 text-center font-medium text-red-700 disabled:opacity-50";
 
 export const estiloErro = "rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700";
+
+export const estiloBotaoWhatsApp =
+  "rounded-lg bg-green-700 px-4 py-3 text-center font-medium text-white hover:bg-green-800";

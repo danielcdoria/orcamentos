@@ -40,6 +40,7 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 | `src/lib/sessao.ts` | Cria, lê e apaga a sessão (o cookie `sessao` + a linha na tabela Sessao). Login dura 30 dias. |
 | `src/lib/senha.ts` | Embaralha a senha (hash com scrypt) e confere a senha digitada no login. |
 | `src/lib/abertura.ts` | Registro de abertura do link público. Decide se a visita conta (ignora robôs como a prévia do WhatsApp, a própria empresa logada e pré-carregamentos) e grava `abertoEm` (1ª vez) e `vezesAberto`. Aberturas com menos de 30 min de diferença contam como uma só (`ultimaAberturaEm`). |
+| `src/lib/telefone.ts` | `telefoneParaWhatsApp` (limpa o número e põe o 55 do Brasil: "(21) 99999-8888" → "5521999998888") e `formatarTelefone` (mostra como "(21) 99999-8888"). |
 | `src/lib/mensagem.ts` | Monta a mensagem de envio trocando `{cliente}`, `{link}`, `{numero}`, `{total}` e `{empresa}` pelos dados reais. |
 | `src/lib/formatos.ts` | Datas (`formatarData`, `formatarDataHora`, no fuso de Brasília) e `formatarQuantidade`. |
 | `src/lib/url.ts` | `urlBase()`: descobre o endereço do site (localhost ou Vercel) para montar links completos. |
@@ -49,7 +50,7 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 
 | Arquivo | O que faz |
 |---|---|
-| `src/components/estilos.ts` | Classes do Tailwind de campos, botões e mensagens de erro, usadas em todas as telas. Mudar aqui muda o visual do sistema todo. |
+| `src/components/estilos.ts` | Classes do Tailwind de campos, botões (inclusive o verde do WhatsApp) e mensagens de erro, usadas em todas as telas. Mudar aqui muda o visual do sistema todo. |
 
 ## Telas (`src/app/`)
 
@@ -75,10 +76,11 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | `src/app/(app)/page.tsx` | Página inicial (`/`). Só redireciona para `/orcamentos`. |
 | `src/app/(app)/menu.tsx` | Menu principal (Orçamentos, Clientes, Catálogo): abas no topo no computador, barra fixa no rodapé no celular. |
 | `src/app/(app)/orcamentos/page.tsx` | Lista de orçamentos: mais recentes primeiro, com cliente, número, data, status e total (mostra os 100 últimos). Tocar abre o orçamento. Selo **Visto** / **Não visto** mostra se o cliente abriu o link. |
-| `src/app/(app)/orcamentos/[id]/page.tsx` | Tela interna de um orçamento: se/quando o cliente abriu, resumo, itens e o link da página pública. |
+| `src/app/(app)/orcamentos/[id]/page.tsx` | Tela interna de um orçamento: quando foi enviado, se/quando o cliente abriu, resumo, itens, botões de envio e o link da página pública. Monta a mensagem e o link `wa.me`. |
+| `src/app/(app)/orcamentos/[id]/botoes-envio.tsx` | Botões "Enviar no WhatsApp" (abre o WhatsApp e marca como enviado) e "Copiar link". |
 | `src/app/(app)/orcamentos/novo/page.tsx` | Tela de novo orçamento. Busca clientes e o catálogo inteiro e entrega ao formulário. |
 | `src/app/(app)/orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento: escolher cliente, buscar e adicionar itens, editar quantidade e preço, total ao vivo, observação. |
-| `src/app/(app)/orcamentos/actions.ts` | `salvarOrcamento`: valida tudo, **recalcula** subtotais e total no servidor, gera o número sequencial da empresa e a validade (hoje + `diasValidade`), e abre o orçamento criado. |
+| `src/app/(app)/orcamentos/actions.ts` | `salvarOrcamento`: valida tudo, **recalcula** subtotais e total no servidor, gera o número sequencial da empresa e a validade (hoje + `diasValidade`), e abre o orçamento criado. `marcarEnviado`: status "enviado" + `enviadoEm`. |
 | `src/app/(app)/clientes/page.tsx` | Lista de clientes (ordem alfabética). |
 | `src/app/(app)/clientes/novo/page.tsx` | Tela de novo cliente. |
 | `src/app/(app)/clientes/[id]/page.tsx` | Tela de editar cliente. |
