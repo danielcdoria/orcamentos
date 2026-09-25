@@ -28,3 +28,8 @@ export function lerReais(texto: string): number | null {
 export function calcularSubtotal(quantidade: number, precoUnitarioCentavos: number): number {
   return Math.round(quantidade * precoUnitarioCentavos);
 }
+
+// 1250 -> "12,50" (sem "R$"; usado para preencher campos de edição)
+export function centavosParaTexto(centavos: number): string {
+  return (centavos / 100).toFixed(2).replace(".", ",");
+}

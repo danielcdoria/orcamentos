@@ -1,5 +1,6 @@
 import { exigirSessao } from "@/lib/auth";
 import { sair } from "./actions";
+import { Menu } from "./menu";
 
 // Os parênteses em "(app)" criam um GRUPO: a pasta não aparece no endereço
 // (src/app/(app)/page.tsx continua sendo "/"). Serve para aplicar este layout,
@@ -21,7 +22,9 @@ export default async function LayoutInterno({ children }: LayoutProps<"/">) {
           </button>
         </form>
       </header>
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">{children}</main>
+      {/* pb-24 deixa espaço para o conteúdo não ficar escondido atrás do menu */}
+      <main className="mx-auto w-full max-w-2xl flex-1 px-4 pt-6 pb-24">{children}</main>
+      <Menu />
     </div>
   );
 }
