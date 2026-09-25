@@ -6,6 +6,7 @@ import { registrarAbertura, visitaContaComoAbertura } from "@/lib/abertura";
 import { prisma } from "@/lib/prisma";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData, formatarQuantidade } from "@/lib/formatos";
+import { BotaoPdf } from "./botao-pdf";
 
 // PÁGINA PÚBLICA do orçamento: /orcamento/<token>
 // Fica FORA da pasta (app), então não exige login. Quem tem o link, vê.
@@ -55,8 +56,9 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
   const vencido = o.validoAte < new Date();
 
   return (
-    <main className="min-h-dvh bg-gray-100 px-3 py-4 sm:px-6 sm:py-10">
-      <article className="mx-auto max-w-2xl overflow-hidden rounded-2xl bg-white shadow-sm">
+    // As classes "print:" só valem na impressão/PDF: tiram o fundo cinza, a sombra e as margens.
+    <main className="min-h-dvh bg-gray-100 px-3 py-4 sm:px-6 sm:py-10 print:min-h-0 print:bg-white print:p-0">
+      <article className="mx-auto max-w-2xl overflow-hidden rounded-2xl bg-white shadow-sm print:max-w-none print:rounded-none print:shadow-none">
         {/* Empresa */}
         <header className="flex items-center gap-4 border-b border-gray-100 px-5 py-6 sm:px-8">
           {o.empresa.logoUrl && (
@@ -109,7 +111,7 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
           </h2>
           <ul className="divide-y divide-gray-100">
             {o.itens.map((item) => (
-              <li key={item.id} className="flex items-start justify-between gap-4 py-4">
+              <li key={item.id} className="flex items-start justify-between gap-4 py-4 break-inside-avoid">
                 <div className="min-w-0">
                   <p className="font-medium">{item.descricao}</p>
                   <p className="mt-0.5 text-sm text-gray-600">
@@ -123,7 +125,7 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
         </section>
 
         {/* Total */}
-        <section className="mx-5 mt-2 flex items-center justify-between rounded-xl bg-gray-900 px-5 py-5 text-white sm:mx-8">
+        <section className="mx-5 mt-2 flex items-center justify-between rounded-xl bg-gray-900 px-5 py-5 text-white break-inside-avoid sm:mx-8">
           <span className="font-medium">Total</span>
           <span className="text-2xl font-bold tabular-nums">{formatarCentavos(o.total)}</span>
         </section>
@@ -150,6 +152,11 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
           )}
         </section>
       </article>
+
+      {/* Fora do <article>: não faz parte do orçamento e some na impressão */}
+      <div className="mx-auto mt-4 max-w-2xl print:hidden">
+        <BotaoPdf />
+      </div>
     </main>
   );
 }

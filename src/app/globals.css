@@ -18,3 +18,21 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* Impressão / PDF */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: white;
+  }
+  /* Por padrão, navegadores não imprimem cores de fundo (para economizar tinta).
+     Isto força a impressão do fundo escuro do "Total" e das demais cores. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

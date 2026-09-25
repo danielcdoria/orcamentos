@@ -64,7 +64,7 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | Arquivo | O que faz |
 |---|---|
 | `src/app/layout.tsx` | Moldura comum a todas as páginas (`<html>`, fonte, título). |
-| `src/app/globals.css` | CSS global; é onde o Tailwind é carregado. Modo escuro desligado até a semana 4. |
+| `src/app/globals.css` | CSS global; é onde o Tailwind é carregado. Modo escuro desligado até a semana 4. Tem as regras de impressão/PDF (folha A4, margens, imprimir cores de fundo). As classes `print:` nas páginas também só valem na impressão. |
 | `src/app/login/page.tsx` | Tela de login (`/login`). Quem já está logado é mandado para `/`. |
 | `src/app/login/form-login.tsx` | O formulário de login (roda no navegador para mostrar erros e o "Entrando..."). |
 | `src/app/login/actions.ts` | Confere email e senha, bloqueia por 15 min após 5 erros seguidos e cria a sessão. |
@@ -89,6 +89,7 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | `src/app/(app)/catalogo/form-item.tsx` | Formulário de item (descrição, preço, unidade). |
 | `src/app/(app)/catalogo/actions.ts` | `salvarItem` e `apagarItem`. |
 | `src/app/orcamento/[token]/page.tsx` | **Página pública** do orçamento (sem login), a que o cliente abre. O `token` é um código de 64 caracteres sorteado pelo banco. Também define o título/descrição da prévia no WhatsApp, pede ao Google para não indexar e registra a abertura (ver `src/lib/abertura.ts`). |
+| `src/app/orcamento/[token]/botao-pdf.tsx` | Botão "Baixar PDF": abre a impressão do navegador (Salvar como PDF). Some na impressão. |
 | `src/app/orcamento/[token]/not-found.tsx` | Mensagem para o **cliente** quando o link do orçamento está errado (sem link para o login). |
 | `src/app/not-found.tsx` | Página "não encontrada" (endereço inexistente ou de outra empresa). |
 | `src/app/favicon.ico` | Ícone da aba do navegador. |
