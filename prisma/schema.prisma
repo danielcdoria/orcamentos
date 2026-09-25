@@ -24,10 +24,42 @@ model Empresa {
   diasValidade      Int      @default(15) // validade padrão dos orçamentos, em dias
   criadoEm          DateTime @default(now())
 
+  usuario        Usuario?
+  sessoes        Sessao[]
   clientes       Cliente[]
   itens          Item[]
   orcamentos     Orcamento[]
   orcamentoItens OrcamentoItem[]
+}
+
+// Quem faz login. Um usuário por empresa (por isso empresaId é @unique).
+model Usuario {
+  id               String    @id @default(cuid())
+  empresaId        String    @unique
+  email            String    @unique // guardado sempre em minúsculas
+  senhaHash        String // a senha NUNCA é guardada; só este "resumo" embaralhado dela
+  tentativasFalhas Int       @default(0) // senhas erradas seguidas
+  bloqueadoAte     DateTime? // após 5 erros seguidos, o login fica travado por 15 minutos
+  criadoEm         DateTime  @default(now())
+
+  empresa Empresa  @relation(fields: [empresaId], references: [id])
+  sessoes Sessao[]
+}
+
+// Cada login aberto (um celular, um computador...). O navegador guarda um código
+// secreto num cookie; aqui fica só o "resumo" (hash) desse código.
+model Sessao {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  usuarioId String
+  empresaId String
+  expiraEm  DateTime
+  criadoEm  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+
+  @@index([usuarioId])
 }
 
 model Cliente {
