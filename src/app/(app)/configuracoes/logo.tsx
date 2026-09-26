@@ -7,7 +7,7 @@ import { estiloBotaoPerigo, estiloBotaoSecundario, estiloErro } from "@/componen
 const LADO_MAX = 512; // pixels
 
 // Diminui a imagem no próprio navegador antes de enviar: uma foto de 5 MB do celular
-// vira um logo leve. Mantém a transparência (PNG/WebP).
+// vira um logo leve. Mantém a transparência (PNG).
 async function reduzirImagem(arquivo: File): Promise<Blob> {
   const imagem = await createImageBitmap(arquivo);
   const escala = Math.min(1, LADO_MAX / Math.max(imagem.width, imagem.height));
@@ -16,10 +16,8 @@ async function reduzirImagem(arquivo: File): Promise<Blob> {
   canvas.height = Math.round(imagem.height * escala);
   canvas.getContext("2d")!.drawImage(imagem, 0, 0, canvas.width, canvas.height);
 
-  const gerar = (tipo: string) =>
-    new Promise<Blob | null>((ok) => canvas.toBlob(ok, tipo, 0.9));
-  // WebP é menor; se o navegador não souber gerar WebP, ele devolve PNG.
-  const blob = (await gerar("image/webp")) ?? (await gerar("image/png"));
+  // PNG: mantém fundo transparente e é aceito em todo lugar (inclusive no PDF).
+  const blob = await new Promise<Blob | null>((ok) => canvas.toBlob(ok, "image/png"));
   if (!blob) throw new Error("Não foi possível processar a imagem.");
   return blob;
 }

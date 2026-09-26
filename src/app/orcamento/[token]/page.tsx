@@ -177,7 +177,7 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
 
       {/* Fora do <article>: não faz parte do orçamento e some na impressão */}
       <div className="mx-auto mt-4 max-w-2xl print:hidden">
-        <BotaoPdf />
+        <BotaoPdf token={token} />
       </div>
     </main>
   );

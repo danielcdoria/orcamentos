@@ -116,7 +116,9 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | `src/app/(app)/configuracoes/actions.ts` | `salvarEmpresa`, `salvarCobranca` (prazos em ordem, mensagens não vazias), `salvarLogo` (confere se o arquivo é mesmo PNG/JPG/WebP) e `removerLogo`. |
 | `src/app/logo/[empresaId]/route.ts` | Entrega a imagem do logo guardada no banco (endereço `/logo/<empresaId>`). Público, porque aparece na página do cliente. |
 | `src/app/orcamento/[token]/page.tsx` | **Página pública** do orçamento (sem login), a que o cliente abre. O `token` é um código de 64 caracteres sorteado pelo banco. O telefone da empresa é um link de ligação. Também define o título/descrição da prévia no WhatsApp, pede ao Google para não indexar e registra a abertura (ver `src/lib/abertura.ts`). |
-| `src/app/orcamento/[token]/botao-pdf.tsx` | Botão "Baixar PDF": abre a impressão do navegador (Salvar como PDF). Some na impressão. |
+| `src/app/orcamento/[token]/botao-pdf.tsx` | Botão "Baixar PDF": link para `/orcamento/<token>/pdf`, que baixa o arquivo direto. |
+| `src/app/orcamento/[token]/pdf/route.ts` | Gera o PDF do orçamento no servidor e devolve para download (`orcamento-14-oficina-silva.pdf`). Público como a página do cliente. |
+| `src/app/orcamento/[token]/pdf/documento-pdf.tsx` | O desenho do PDF (folha A4): logo, número, dados, tabela de itens, total, condições. Usa `@react-pdf/renderer` (não é HTML). Só aceita logo PNG/JPG. |
 | `src/app/orcamento/[token]/not-found.tsx` | Mensagem para o **cliente** quando o link do orçamento está errado (sem link para o login). |
 | `src/app/not-found.tsx` | Página "não encontrada" (endereço inexistente ou de outra empresa). |
 | `src/app/favicon.ico` | Ícone da aba do navegador. |
