@@ -3,6 +3,14 @@
 O que cada arquivo e pasta faz. Atualizado a cada parte construída.
 Se algo der problema, procure aqui qual arquivo cuida daquilo.
 
+## Publicação
+
+- **Site no ar:** https://orcamentos-psi-lilac.vercel.app (Vercel, plano Hobby, região São Paulo).
+- **Como atualizar:** todo `git push` para a branch `main` faz a Vercel publicar a versão nova sozinha (1 a 3 minutos). Antes de montar o site, ela aplica as migrations pendentes no banco de produção (`vercel-build`).
+- **Variáveis de ambiente na Vercel:** `DATABASE_URL` e `DIRECT_URL` do banco de **produção** (os mesmos valores do `.env.producao`).
+- **Bancos:** a Neon tem dois branches. `production` = dados reais (site publicado). `dev` = testes (o Mac).
+- **Plano:** o Hobby da Vercel é só para uso não comercial. Ao entrar o primeiro cliente pagante, mudar para o Pro.
+
 ## Configuração do projeto
 
 | Arquivo / pasta | O que faz |
