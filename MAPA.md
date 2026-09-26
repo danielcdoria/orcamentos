@@ -77,9 +77,12 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | `src/app/(app)/layout.tsx` | Moldura das páginas internas: confere o login e mostra o nome da empresa, o link Configurações e o botão Sair. |
 | `src/app/(app)/actions.ts` | Ação `sair()`: apaga a sessão e volta para o login. |
 | `src/app/(app)/page.tsx` | Página inicial (`/`). Só redireciona para `/orcamentos`. |
-| `src/app/(app)/menu.tsx` | Menu principal (Orçamentos, Clientes, Catálogo): abas no topo no computador, barra fixa no rodapé no celular. |
+| `src/app/(app)/menu.tsx` | Menu principal (Cobrar, Orçamentos, Clientes, Catálogo): abas no topo no computador, barra fixa no rodapé no celular. |
+| `src/app/(app)/cobrar/page.tsx` | **Cobrar hoje** (`/cobrar`), a tela principal do produto: lista quem precisa ser cobrado hoje (regra em `src/lib/cobranca.ts`). |
+| `src/app/(app)/cobrar/cartao-cobranca.tsx` | Um cartão por cliente: valor, há quantos dias foi enviado, se abriu, qual cobrança, mensagem editável e os botões "Enviar no WhatsApp" e "Já respondeu". |
+| `src/app/(app)/cobrar/actions.ts` | `registrarCobranca` (grava a cobrança enviada, com o texto final, e tira da fila) e `marcarRespondido`. O sistema nunca envia nada sozinho. |
 | `src/app/(app)/orcamentos/page.tsx` | Lista de orçamentos: mais recentes primeiro, com cliente, número, data, status e total (mostra os 100 últimos). Tocar abre o orçamento. Selo **Visto** / **Não visto** mostra se o cliente abriu o link. Cada linha tem o seletor de status. |
-| `src/app/(app)/orcamentos/[id]/page.tsx` | Tela interna de um orçamento: quando foi enviado, se/quando o cliente abriu, resumo, itens, botões de envio e o link da página pública. Monta a mensagem e o link `wa.me`. |
+| `src/app/(app)/orcamentos/[id]/page.tsx` | Tela interna de um orçamento: quando foi enviado, cobranças já feitas, se/quando o cliente abriu, resumo, itens, botões de envio e o link da página pública. Monta a mensagem e o link `wa.me`. |
 | `src/app/(app)/orcamentos/[id]/botoes-envio.tsx` | Botões "Enviar no WhatsApp" (abre o WhatsApp e marca como enviado) e "Copiar link". |
 | `src/app/(app)/orcamentos/novo/page.tsx` | Tela de novo orçamento. Busca clientes e o catálogo inteiro e entrega ao formulário. |
 | `src/app/(app)/orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento: escolher cliente, buscar e adicionar itens, editar quantidade e preço, total ao vivo, observação. |

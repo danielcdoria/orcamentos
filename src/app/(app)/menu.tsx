@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const itens = [
+  { href: "/cobrar", rotulo: "Cobrar" },
   { href: "/orcamentos", rotulo: "Orçamentos" },
   { href: "/clientes", rotulo: "Clientes" },
   { href: "/catalogo", rotulo: "Catálogo" },

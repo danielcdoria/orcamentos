@@ -21,6 +21,7 @@ export default async function DetalheOrcamento(props: PageProps<"/orcamentos/[id
     include: {
       cliente: { select: { nome: true, telefone: true } },
       empresa: { select: { nome: true, mensagemEnvio: true } },
+      cobrancas: { orderBy: { etapa: "asc" }, select: { etapa: true, enviadaEm: true } },
       itens: { orderBy: { id: "asc" } },
     },
   });
@@ -61,6 +62,12 @@ export default async function DetalheOrcamento(props: PageProps<"/orcamentos/[id
           Enviado pelo WhatsApp em {formatarDataHora(o.enviadoEm)}.
         </p>
       )}
+
+      {o.cobrancas.map((c) => (
+        <p key={c.etapa} className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {c.etapa}ª cobrança enviada em {formatarDataHora(c.enviadaEm)}.
+        </p>
+      ))}
 
       <p
         className={`rounded-lg px-4 py-3 text-sm ${
