@@ -7,10 +7,11 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 
 | Arquivo / pasta | O que faz |
 |---|---|
-| `package.json` | Lista as bibliotecas usadas e os comandos (`npm run dev`, `npm run build`). Parecido com o `pom.xml` do Maven. O `postinstall` gera o código do Prisma sempre que alguém roda `npm install` (inclusive a Vercel). |
+| `package.json` | Lista as bibliotecas usadas e os comandos (`npm run dev`, `npm run build`). Parecido com o `pom.xml` do Maven. O `postinstall` gera o código do Prisma sempre que alguém roda `npm install` (inclusive a Vercel). O `vercel-build` (usado só pela Vercel) aplica as migrations pendentes no banco de produção antes de montar o site. |
 | `package-lock.json` | Registra a versão exata de cada biblioteca instalada. Gerado pelo npm, não se edita à mão. |
 | `node_modules/` | Onde as bibliotecas ficam instaladas. Não vai para o git; `npm install` recria. |
 | `tsconfig.json` | Configuração do TypeScript. |
+| `vercel.json` | Configuração da Vercel: roda o site em São Paulo (`gru1`), perto do banco. |
 | `next.config.ts` | Configuração do Next.js. Libera o acesso pelo IP da rede de casa em desenvolvimento (`allowedDevOrigins`). Envia os cabeçalhos de proteção (anti-moldura/clickjacking, nosniff, referrer) em todas as páginas. Define a raiz do projeto (`turbopack.root`) porque existe um `package-lock.json` vazio em `~/` que confundia o Next. |
 | `postcss.config.mjs` | Liga o Tailwind ao processo de build do CSS. |
 | `eslint.config.mjs` | Regras do ESLint, que aponta erros e más práticas no código (`npm run lint`). |
@@ -24,7 +25,8 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 
 | Arquivo / pasta | O que faz |
 |---|---|
-| `.env` | **Secreto.** Guarda os endereços do banco na Neon. Nunca vai para o git. `DATABASE_URL` (com pooler) é usada pelo site; `DIRECT_URL` (conexão direta) é usada pelas migrations. |
+| `.env` | **Secreto.** Endereços do banco de **testes** (branch `dev` da Neon), usado pelo Mac. Nunca vai para o git. `DATABASE_URL` (com pooler) é usada pelo site; `DIRECT_URL` (conexão direta) é usada pelas migrations. |
+| `.env.producao` | **Secreto.** Endereços do banco **real** (branch `production`), o mesmo que a Vercel usa. Só é lido pelos comandos `*:producao` (ex.: `npm run demo:producao`). Nunca vai para o git. |
 | `.env.example` | Modelo do `.env` sem senhas. Mostra quais variáveis o projeto precisa. Vai para o git. |
 | `prisma.config.ts` | Diz ao Prisma onde está o schema, onde ficam as migrations e de onde vem o endereço do banco (usa `DIRECT_URL`). |
 | `prisma/schema.prisma` | Descreve as tabelas do banco (como as `@Entity` do JPA): Empresa (inclui a mensagem de envio, os prazos e os 4 modelos de cobrança), Cobranca (cada cobrança enviada), EmpresaLogo (a imagem do logo), Usuario (login), Sessao (logins abertos), Cliente, Item (catálogo), Orcamento e OrcamentoItem (linhas do orçamento). |
@@ -116,6 +118,6 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 
 | Arquivo | O que faz |
 |---|---|
-| `scripts/demo-oficina.ts` | Dados de demonstração: recria a "Oficina Silva" (12 clientes, 25 itens de oficina, 18 orçamentos com datas a partir de hoje, 3 deles em "Cobrar hoje"). Rode com `npm run demo`. Apaga só a Oficina Silva anterior. |
+| `scripts/demo-oficina.ts` | Dados de demonstração: recria a "Oficina Silva" (12 clientes, 25 itens de oficina, 18 orçamentos com datas a partir de hoje, 3 deles em "Cobrar hoje"). `npm run demo` (banco de testes) ou `npm run demo:producao` (site publicado). Apaga só a Oficina Silva anterior. |
 | `scripts/demo/logo-oficina-silva.png` | Logo da Oficina Silva usado pelo script de demonstração. |
-| `scripts/criar-empresa.ts` | Cadastra uma empresa e o usuário de login dela. Rode com `npm run criar-empresa`. É o único jeito de criar contas (não existe cadastro público). |
+| `scripts/criar-empresa.ts` | Cadastra uma empresa e o usuário de login dela. `npm run criar-empresa` (testes) ou **`npm run criar-empresa:producao`** (clientes reais, no site publicado). É o único jeito de criar contas (não existe cadastro público). |

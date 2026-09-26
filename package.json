@@ -9,7 +9,10 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "criar-empresa": "tsx --conditions=react-server scripts/criar-empresa.ts",
-    "demo": "tsx --conditions=react-server scripts/demo-oficina.ts"
+    "demo": "tsx --conditions=react-server scripts/demo-oficina.ts",
+    "vercel-build": "prisma migrate deploy && next build",
+    "demo:producao": "DOTENV_CONFIG_PATH=.env.producao tsx --conditions=react-server scripts/demo-oficina.ts",
+    "criar-empresa:producao": "DOTENV_CONFIG_PATH=.env.producao tsx --conditions=react-server scripts/criar-empresa.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
