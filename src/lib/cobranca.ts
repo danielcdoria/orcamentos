@@ -69,12 +69,9 @@ export type ItemFila = {
   mensagem: string; // já montada a partir do modelo certo
 };
 
-// A fila de "Cobrar hoje": quem precisa ser cobrado, com a mensagem pronta.
-// linkDoOrcamento monta o link público a partir do token (o endereço depende do site).
-export async function buscarFila(
-  empresaId: string,
-  linkDoOrcamento: (token: string) => string,
-): Promise<ItemFila[]> {
+// Quem está com cobrança devida hoje (a decisão, sem montar mensagens).
+// Usada tanto pela tela "Cobrar hoje" quanto pelo aviso da lista, para os dois baterem.
+async function orcamentosDevidos(empresaId: string) {
   const empresa = await prisma.empresa.findUniqueOrThrow({ where: { id: empresaId } });
   await marcarPerdidosVencidos(empresaId, empresa.prazoPerdido);
 
@@ -86,19 +83,37 @@ export async function buscarFila(
     },
   });
 
-  const fila: ItemFila[] = [];
+  const devidos = [];
   for (const o of candidatos) {
     const dias = diasDesde(o.enviadoEm!);
     const etapa = etapaDevida(dias, o.cobrancas.map((c) => c.etapa), empresa);
-    if (!etapa) continue;
+    if (etapa) devidos.push({ o, dias, etapa });
+  }
+  return { empresa, devidos };
+}
 
+// Quantos orçamentos esperam cobrança hoje (para o aviso no topo da lista).
+export async function contarFila(empresaId: string): Promise<number> {
+  const { devidos } = await orcamentosDevidos(empresaId);
+  return devidos.length;
+}
+
+// A fila de "Cobrar hoje": quem precisa ser cobrado, com a mensagem pronta.
+// linkDoOrcamento monta o link público a partir do token (o endereço depende do site).
+export async function buscarFila(
+  empresaId: string,
+  linkDoOrcamento: (token: string) => string,
+): Promise<ItemFila[]> {
+  const { empresa, devidos } = await orcamentosDevidos(empresaId);
+
+  const fila: ItemFila[] = devidos.map(({ o, dias, etapa }) => {
     const abriu = o.abertoEm !== null;
     const modelo =
       etapa === 1
         ? abriu ? empresa.msgCobranca1Abriu : empresa.msgCobranca1NaoAbriu
         : abriu ? empresa.msgCobranca2Abriu : empresa.msgCobranca2NaoAbriu;
 
-    fila.push({
+    return {
       orcamentoId: o.id,
       numero: o.numero,
       cliente: o.cliente.nome,
@@ -115,8 +130,8 @@ export async function buscarFila(
         validade: formatarData(o.validoAte),
         numero: String(o.numero),
       }),
-    });
-  }
+    };
+  });
 
   // Os mais antigos primeiro (dinheiro mais perto de esfriar)
   return fila.sort((a, b) => b.dias - a.dias);

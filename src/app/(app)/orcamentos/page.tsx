@@ -5,6 +5,7 @@ import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData } from "@/lib/formatos";
 import { estiloBotao } from "@/components/estilos";
 import { SeletorStatus } from "@/components/seletor-status";
+import { contarFila } from "@/lib/cobranca";
 
 // "Visto" em verde forte quando o cliente já abriu; "Não visto" em cinza quando não.
 function SeloAbertura({ abertoEm, vezes }: { abertoEm: Date | null; vezes: number }) {
@@ -25,6 +26,10 @@ function SeloAbertura({ abertoEm, vezes }: { abertoEm: Date | null; vezes: numbe
 export default async function PaginaOrcamentos() {
   const { empresaId } = await exigirSessao();
 
+  // Conta ANTES de buscar a lista: a contagem também marca como perdido quem passou
+  // do prazo, e assim a lista já aparece com o status certo.
+  const paraCobrar = await contarFila(empresaId);
+
   const orcamentos = await prisma.orcamento.findMany({
     where: { empresaId },
     orderBy: { criadoEm: "desc" }, // mais recentes primeiro
@@ -43,6 +48,20 @@ export default async function PaginaOrcamentos() {
 
   return (
     <div className="flex flex-col gap-6">
+      {paraCobrar > 0 && (
+        <Link
+          href="/cobrar"
+          className="flex items-center justify-between gap-4 rounded-xl bg-amber-400 px-5 py-4 font-semibold text-gray-900 shadow-sm hover:bg-amber-300"
+        >
+          <span>
+            {paraCobrar === 1
+              ? "1 orçamento esperando cobrança hoje"
+              : `${paraCobrar} orçamentos esperando cobrança hoje`}
+          </span>
+          <span aria-hidden className="text-xl">→</span>
+        </Link>
+      )}
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Orçamentos</h1>
         <Link href="/orcamentos/novo" className={`${estiloBotao} py-2`}>
