@@ -2,7 +2,7 @@ import Link from "next/link";
 import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatarCentavos } from "@/lib/dinheiro";
-import { formatarData } from "@/lib/formatos";
+import { formatarDataCurta } from "@/lib/formatos";
 import { estiloBotao } from "@/components/estilos";
 import { SeletorStatus } from "@/components/seletor-status";
 import { contarFila } from "@/lib/cobranca";
@@ -77,12 +77,12 @@ export default async function PaginaOrcamentos() {
             <li key={o.id} className="flex flex-col gap-2 px-5 py-4 hover:bg-gray-50">
               <Link href={`/orcamentos/${o.id}`} className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <span className="flex items-center gap-2">
-                    <span className="truncate font-medium">{o.cliente.nome}</span>
+                  <span className="block truncate font-medium">{o.cliente.nome}</span>
+                  <span className="mt-1 flex items-center gap-2 text-sm text-gray-600">
+                    <span className="whitespace-nowrap">
+                      Nº {o.numero} · {formatarDataCurta(o.criadoEm)}
+                    </span>
                     <SeloAbertura abertoEm={o.abertoEm} vezes={o.vezesAberto} />
-                  </span>
-                  <span className="mt-0.5 block text-sm text-gray-600">
-                    Nº {o.numero} · {formatarData(o.criadoEm)}
                   </span>
                 </div>
                 <span className="shrink-0 font-semibold">{formatarCentavos(o.total)}</span>

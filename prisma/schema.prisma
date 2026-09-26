@@ -25,7 +25,7 @@ model Empresa {
   criadoEm          DateTime @default(now())
 
   // Mensagem do botão "Enviar no WhatsApp". {cliente}, {link} etc. são trocados na hora.
-  mensagemEnvio String @default("Olá {cliente}, segue o orçamento que combinamos: {link}")
+  mensagemEnvio String @default("Olá {nome}, segue o orçamento que combinamos: {link}")
 
   // REGRA DE COBRANÇA (dias contados a partir do envio, enquanto o cliente não responde)
   prazoCobranca1 Int @default(2) // 1ª cobrança
@@ -33,10 +33,10 @@ model Empresa {
   prazoPerdido   Int @default(15) // marca como perdido e para de cobrar
 
   // Modelos das mensagens de cobrança: diferentes para quem abriu e quem não abriu o link.
-  msgCobranca1NaoAbriu String @default("Oi, {cliente}! Tudo bem? Te mandei o orçamento da {empresa} há uns dias, mas acho que acabou se perdendo aí no meio das mensagens. Vou deixar o link de novo aqui: {link}")
-  msgCobranca1Abriu    String @default("Oi, {cliente}! Tudo certo? Vi que você deu uma olhada no orçamento. Ficou alguma dúvida ou quer ajustar alguma coisa? É só me falar que a gente acerta 🙂")
-  msgCobranca2NaoAbriu String @default("Oi, {cliente}, tudo bem? Passando só pra confirmar se o orçamento chegou certinho pra você. Ele fica válido até {validade}. O link é este: {link}")
-  msgCobranca2Abriu    String @default("Oi, {cliente}! Queria saber se o orçamento ainda faz sentido pra você. Se o valor ou o prazo não encaixou, me conta que eu vejo o que dá pra fazer. Ele vale até {validade}.")
+  msgCobranca1NaoAbriu String @default("Oi, {nome}! Tudo bem? Te mandei o orçamento da {empresa} há uns dias, mas acho que acabou se perdendo aí no meio das mensagens. Vou deixar o link de novo aqui: {link}")
+  msgCobranca1Abriu    String @default("Oi, {nome}! Tudo certo? Vi que você deu uma olhada no orçamento. Ficou alguma dúvida ou quer ajustar alguma coisa? É só me falar que a gente acerta 🙂")
+  msgCobranca2NaoAbriu String @default("Oi, {nome}, tudo bem? Passando só pra confirmar se o orçamento chegou certinho pra você. Ele fica válido até {validade}. O link é este: {link}")
+  msgCobranca2Abriu    String @default("Oi, {nome}! Queria saber se o orçamento ainda faz sentido pra você. Se o valor ou o prazo não encaixou, me conta que eu vejo o que dá pra fazer. Ele vale até {validade}.")
 
   cobrancas Cobranca[]
 

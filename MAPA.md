@@ -44,8 +44,8 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 | `src/lib/status.ts` | Nome e cor de cada status, e quais contam como "esperando o cliente" (enviado, aberto). |
 | `src/lib/abertura.ts` | Registro de abertura do link público. Decide se a visita conta (ignora robôs como a prévia do WhatsApp, a própria empresa logada e pré-carregamentos) e grava `abertoEm` (1ª vez) e `vezesAberto`. Muda o status para **aberto** (se era rascunho ou enviado); se era rascunho, também marca como enviado agora. Aberturas com menos de 30 min de diferença contam como uma só (`ultimaAberturaEm`). |
 | `src/lib/telefone.ts` | `telefoneParaWhatsApp` (limpa o número e põe o 55 do Brasil: "(21) 99999-8888" → "5521999998888") e `formatarTelefone` (mostra como "(21) 99999-8888"). |
-| `src/lib/mensagem.ts` | Monta mensagens trocando `{cliente}`, `{empresa}`, `{valor}`, `{link}`, `{validade}` e `{numero}` pelos dados reais (`{total}` ainda funciona como sinônimo de `{valor}`). |
-| `src/lib/formatos.ts` | Datas (`formatarData`, `formatarDataHora`, no fuso de Brasília) e `formatarQuantidade`. |
+| `src/lib/mensagem.ts` | Monta mensagens trocando `{nome}` (primeiro nome), `{cliente}` (nome completo), `{empresa}`, `{valor}`, `{link}`, `{validade}` e `{numero}` pelos dados reais (`{total}` ainda funciona como sinônimo de `{valor}`). |
+| `src/lib/formatos.ts` | Datas (`formatarData`, `formatarDataCurta`, `formatarDataHora`, no fuso de Brasília) e `formatarQuantidade`. |
 | `src/lib/url.ts` | `urlBase()`: descobre o endereço do site (Vercel em produção) para montar links completos. No `npm run dev`, troca `localhost` pelo IP do Mac na rede, para o link abrir no celular. |
 | `src/lib/dinheiro.ts` | Funções de dinheiro: `formatarCentavos` (1250 → "R$ 12,50"), `lerReais` ("12,50" → 1250) e `calcularSubtotal` (quantidade × preço, arredondado) `centavosParaTexto` (1250 → "12,50", para preencher campos), `lerQuantidade` ("2,5" → 2.5) e `quantidadeParaTexto`. |
 
@@ -116,4 +116,6 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 
 | Arquivo | O que faz |
 |---|---|
+| `scripts/demo-oficina.ts` | Dados de demonstração: recria a "Oficina Silva" (12 clientes, 25 itens de oficina, 18 orçamentos com datas a partir de hoje, 3 deles em "Cobrar hoje"). Rode com `npm run demo`. Apaga só a Oficina Silva anterior. |
+| `scripts/demo/logo-oficina-silva.png` | Logo da Oficina Silva usado pelo script de demonstração. |
 | `scripts/criar-empresa.ts` | Cadastra uma empresa e o usuário de login dela. Rode com `npm run criar-empresa`. É o único jeito de criar contas (não existe cadastro público). |

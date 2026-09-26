@@ -20,6 +20,17 @@ export function formatarData(d: Date): string {
   return data.format(d);
 }
 
+const dataCurta = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+  timeZone: "America/Sao_Paulo",
+});
+
+// 25/09 (para listas, onde o ano é óbvio e o espaço é pouco)
+export function formatarDataCurta(d: Date): string {
+  return dataCurta.format(d);
+}
+
 // 25/09, 14:30
 export function formatarDataHora(d: Date): string {
   return dataHora.format(d);
