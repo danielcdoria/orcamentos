@@ -2,6 +2,7 @@ import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { FormEmpresa } from "./form-empresa";
 import { Logo } from "./logo";
+import { FormCobranca } from "./form-cobranca";
 
 export default async function PaginaConfiguracoes() {
   const { empresaId } = await exigirSessao();
@@ -26,6 +27,21 @@ export default async function PaginaConfiguracoes() {
             condicaoPagamento: empresa.condicaoPagamento ?? "",
             diasValidade: String(empresa.diasValidade),
             mensagemEnvio: empresa.mensagemEnvio,
+          }}
+        />
+      </section>
+
+      <section className="flex flex-col gap-3 border-t border-gray-200 pt-8">
+        <h2 className="font-semibold">Cobrança</h2>
+        <FormCobranca
+          cobranca={{
+            prazoCobranca1: String(empresa.prazoCobranca1),
+            prazoCobranca2: String(empresa.prazoCobranca2),
+            prazoPerdido: String(empresa.prazoPerdido),
+            msgCobranca1NaoAbriu: empresa.msgCobranca1NaoAbriu,
+            msgCobranca1Abriu: empresa.msgCobranca1Abriu,
+            msgCobranca2NaoAbriu: empresa.msgCobranca2NaoAbriu,
+            msgCobranca2Abriu: empresa.msgCobranca2Abriu,
           }}
         />
       </section>

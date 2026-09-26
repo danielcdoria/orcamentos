@@ -27,7 +27,7 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 | `.env` | **Secreto.** Guarda os endereços do banco na Neon. Nunca vai para o git. `DATABASE_URL` (com pooler) é usada pelo site; `DIRECT_URL` (conexão direta) é usada pelas migrations. |
 | `.env.example` | Modelo do `.env` sem senhas. Mostra quais variáveis o projeto precisa. Vai para o git. |
 | `prisma.config.ts` | Diz ao Prisma onde está o schema, onde ficam as migrations e de onde vem o endereço do banco (usa `DIRECT_URL`). |
-| `prisma/schema.prisma` | Descreve as tabelas do banco (como as `@Entity` do JPA): Empresa (inclui a mensagem de envio), EmpresaLogo (a imagem do logo), Usuario (login), Sessao (logins abertos), Cliente, Item (catálogo), Orcamento e OrcamentoItem (linhas do orçamento). |
+| `prisma/schema.prisma` | Descreve as tabelas do banco (como as `@Entity` do JPA): Empresa (inclui a mensagem de envio, os prazos e os 4 modelos de cobrança), Cobranca (cada cobrança enviada), EmpresaLogo (a imagem do logo), Usuario (login), Sessao (logins abertos), Cliente, Item (catálogo), Orcamento e OrcamentoItem (linhas do orçamento). |
 | `prisma/migrations/` | Histórico das mudanças no banco. Cada pasta é um `.sql` que o Prisma gerou e aplicou. **Não edite à mão.** Se depois de uma migration aparecer `PrismaClientValidationError`, reinicie o `npm run dev` (Ctrl + C e rodar de novo). |
 | `src/generated/prisma/` | Código gerado pelo Prisma a partir do schema (`npx prisma generate`). Não vai para o git e não se edita. |
 | `src/lib/prisma.ts` | Cria a conexão com o banco que o site inteiro usa. Todo acesso ao banco começa com `import { prisma } from "@/lib/prisma"`. Em desenvolvimento, recria a conexão sozinho quando o Prisma é regenerado. |
@@ -39,10 +39,11 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 | `src/lib/auth.ts` | **Porta de entrada.** `exigirSessao()` confere o login e devolve o `empresaId`. Toda página interna e toda ação que grava dados deve chamar essa função e usar o `empresaId` dela nas consultas. |
 | `src/lib/sessao.ts` | Cria, lê e apaga a sessão (o cookie `sessao` + a linha na tabela Sessao). Login dura 30 dias. |
 | `src/lib/senha.ts` | Embaralha a senha (hash com scrypt) e confere a senha digitada no login. |
+| `src/lib/cobranca.ts` | **A regra de cobrança.** Conta os dias desde o envio (calendário de Brasília), decide a etapa devida (1ª ou 2ª), escolhe o modelo certo (abriu/não abriu), monta a fila de "Cobrar hoje" e marca como perdido quem passou do prazo. Não há "relógio": roda sempre que o sistema é aberto. |
 | `src/lib/status.ts` | Nome e cor de cada status, e quais contam como "esperando o cliente" (enviado, aberto). |
 | `src/lib/abertura.ts` | Registro de abertura do link público. Decide se a visita conta (ignora robôs como a prévia do WhatsApp, a própria empresa logada e pré-carregamentos) e grava `abertoEm` (1ª vez) e `vezesAberto`. Muda o status para **aberto** (se era rascunho ou enviado); se era rascunho, também marca como enviado agora. Aberturas com menos de 30 min de diferença contam como uma só (`ultimaAberturaEm`). |
 | `src/lib/telefone.ts` | `telefoneParaWhatsApp` (limpa o número e põe o 55 do Brasil: "(21) 99999-8888" → "5521999998888") e `formatarTelefone` (mostra como "(21) 99999-8888"). |
-| `src/lib/mensagem.ts` | Monta a mensagem de envio trocando `{cliente}`, `{link}`, `{numero}`, `{total}` e `{empresa}` pelos dados reais. |
+| `src/lib/mensagem.ts` | Monta mensagens trocando `{cliente}`, `{empresa}`, `{valor}`, `{link}`, `{validade}` e `{numero}` pelos dados reais (`{total}` ainda funciona como sinônimo de `{valor}`). |
 | `src/lib/formatos.ts` | Datas (`formatarData`, `formatarDataHora`, no fuso de Brasília) e `formatarQuantidade`. |
 | `src/lib/url.ts` | `urlBase()`: descobre o endereço do site (Vercel em produção) para montar links completos. No `npm run dev`, troca `localhost` pelo IP do Mac na rede, para o link abrir no celular. |
 | `src/lib/dinheiro.ts` | Funções de dinheiro: `formatarCentavos` (1250 → "R$ 12,50"), `lerReais` ("12,50" → 1250) e `calcularSubtotal` (quantidade × preço, arredondado) `centavosParaTexto` (1250 → "12,50", para preencher campos), `lerQuantidade` ("2,5" → 2.5) e `quantidadeParaTexto`. |
@@ -95,8 +96,9 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | `src/app/(app)/catalogo/actions.ts` | `salvarItem` e `apagarItem`. |
 | `src/app/(app)/configuracoes/page.tsx` | Tela de configurações da empresa (`/configuracoes`). |
 | `src/app/(app)/configuracoes/form-empresa.tsx` | Formulário: nome, telefone, condição de pagamento, dias de validade e mensagem de envio (com prévia ao vivo). |
+| `src/app/(app)/configuracoes/form-cobranca.tsx` | Seção Cobrança: prazos (1ª, 2ª, perdido) e os 4 modelos de mensagem (1ª/2ª × abriu/não abriu). |
 | `src/app/(app)/configuracoes/logo.tsx` | Escolher/trocar/remover logo. Reduz a imagem no navegador (máx. 512 px) antes de enviar. |
-| `src/app/(app)/configuracoes/actions.ts` | `salvarEmpresa`, `salvarLogo` (confere se o arquivo é mesmo PNG/JPG/WebP) e `removerLogo`. |
+| `src/app/(app)/configuracoes/actions.ts` | `salvarEmpresa`, `salvarCobranca` (prazos em ordem, mensagens não vazias), `salvarLogo` (confere se o arquivo é mesmo PNG/JPG/WebP) e `removerLogo`. |
 | `src/app/logo/[empresaId]/route.ts` | Entrega a imagem do logo guardada no banco (endereço `/logo/<empresaId>`). Público, porque aparece na página do cliente. |
 | `src/app/orcamento/[token]/page.tsx` | **Página pública** do orçamento (sem login), a que o cliente abre. O `token` é um código de 64 caracteres sorteado pelo banco. O telefone da empresa é um link de ligação. Também define o título/descrição da prévia no WhatsApp, pede ao Google para não indexar e registra a abertura (ver `src/lib/abertura.ts`). |
 | `src/app/orcamento/[token]/botao-pdf.tsx` | Botão "Baixar PDF": abre a impressão do navegador (Salvar como PDF). Some na impressão. |

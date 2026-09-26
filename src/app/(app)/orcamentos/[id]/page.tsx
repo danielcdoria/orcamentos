@@ -33,7 +33,8 @@ export default async function DetalheOrcamento(props: PageProps<"/orcamentos/[id
     cliente: o.cliente.nome,
     link: linkPublico,
     numero: String(o.numero),
-    total: formatarCentavos(o.total),
+    valor: formatarCentavos(o.total),
+    validade: formatarData(o.validoAte),
     empresa: o.empresa.nome,
   });
   const telefone = telefoneParaWhatsApp(o.cliente.telefone);

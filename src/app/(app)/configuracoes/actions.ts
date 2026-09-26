@@ -92,3 +92,53 @@ export async function removerLogo(): Promise<void> {
   await prisma.empresa.update({ where: { id: empresaId }, data: { logoUrl: null } });
   revalidatePath("/configuracoes");
 }
+
+// ---------- Cobrança (prazos e modelos de mensagem) ----------
+
+const CAMPOS_MENSAGEM = [
+  "msgCobranca1NaoAbriu",
+  "msgCobranca1Abriu",
+  "msgCobranca2NaoAbriu",
+  "msgCobranca2Abriu",
+] as const;
+
+export async function salvarCobranca(_estado: EstadoForm, formData: FormData): Promise<EstadoForm> {
+  const { empresaId } = await exigirSessao();
+
+  const texto = (nome: string) => String(formData.get(nome) ?? "").trim();
+  const valores: Record<string, string> = {
+    prazoCobranca1: texto("prazoCobranca1"),
+    prazoCobranca2: texto("prazoCobranca2"),
+    prazoPerdido: texto("prazoPerdido"),
+  };
+  for (const campo of CAMPOS_MENSAGEM) valores[campo] = texto(campo);
+  const falhar = (erro: string): EstadoForm => ({ erro, valores });
+
+  const [p1, p2, perdido] = [valores.prazoCobranca1, valores.prazoCobranca2, valores.prazoPerdido].map(Number);
+  if (![p1, p2, perdido].every((n) => Number.isInteger(n) && n >= 1 && n <= 90)) {
+    return falhar("Os prazos precisam ser números de dias entre 1 e 90.");
+  }
+  if (!(p1 < p2 && p2 < perdido)) {
+    return falhar("Os prazos precisam estar em ordem: 1ª cobrança < 2ª cobrança < perdido.");
+  }
+  for (const campo of CAMPOS_MENSAGEM) {
+    if (!valores[campo]) return falhar("Nenhuma mensagem pode ficar vazia.");
+    if (valores[campo].length > 1000) return falhar("Mensagem muito longa (máximo 1000 caracteres).");
+  }
+
+  await prisma.empresa.update({
+    where: { id: empresaId },
+    data: {
+      prazoCobranca1: p1,
+      prazoCobranca2: p2,
+      prazoPerdido: perdido,
+      msgCobranca1NaoAbriu: valores.msgCobranca1NaoAbriu,
+      msgCobranca1Abriu: valores.msgCobranca1Abriu,
+      msgCobranca2NaoAbriu: valores.msgCobranca2NaoAbriu,
+      msgCobranca2Abriu: valores.msgCobranca2Abriu,
+    },
+  });
+
+  revalidatePath("/", "layout"); // a fila de cobrança depende destes valores
+  return { ok: true };
+}

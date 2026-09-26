@@ -23,7 +23,8 @@ export function FormEmpresa({ empresa }: { empresa: Empresa }) {
     cliente: "Maria",
     link: "https://…/orcamento/abc123",
     numero: "12",
-    total: "R$ 1.250,00",
+    valor: "R$ 1.250,00",
+    validade: "10/10/2026",
     empresa: v.nome || "Sua empresa",
   });
 

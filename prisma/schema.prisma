@@ -27,6 +27,19 @@ model Empresa {
   // Mensagem do botão "Enviar no WhatsApp". {cliente}, {link} etc. são trocados na hora.
   mensagemEnvio String @default("Olá {cliente}, segue o orçamento que combinamos: {link}")
 
+  // REGRA DE COBRANÇA (dias contados a partir do envio, enquanto o cliente não responde)
+  prazoCobranca1 Int @default(2) // 1ª cobrança
+  prazoCobranca2 Int @default(7) // 2ª cobrança
+  prazoPerdido   Int @default(15) // marca como perdido e para de cobrar
+
+  // Modelos das mensagens de cobrança: diferentes para quem abriu e quem não abriu o link.
+  msgCobranca1NaoAbriu String @default("Oi, {cliente}! Tudo bem? Te mandei o orçamento da {empresa} há uns dias, mas acho que acabou se perdendo aí no meio das mensagens. Vou deixar o link de novo aqui: {link}")
+  msgCobranca1Abriu    String @default("Oi, {cliente}! Tudo certo? Vi que você deu uma olhada no orçamento. Ficou alguma dúvida ou quer ajustar alguma coisa? É só me falar que a gente acerta 🙂")
+  msgCobranca2NaoAbriu String @default("Oi, {cliente}, tudo bem? Passando só pra confirmar se o orçamento chegou certinho pra você. Ele fica válido até {validade}. O link é este: {link}")
+  msgCobranca2Abriu    String @default("Oi, {cliente}! Queria saber se o orçamento ainda faz sentido pra você. Se o valor ou o prazo não encaixou, me conta que eu vejo o que dá pra fazer. Ele vale até {validade}.")
+
+  cobrancas Cobranca[]
+
   logo           EmpresaLogo?
   usuario        Usuario?
   sessoes        Sessao[]
@@ -141,9 +154,10 @@ model Orcamento {
   vezesAberto      Int       @default(0)
   ultimaAberturaEm DateTime?
 
-  empresa Empresa         @relation(fields: [empresaId], references: [id])
-  cliente Cliente         @relation(fields: [clienteId], references: [id])
-  itens   OrcamentoItem[]
+  empresa   Empresa         @relation(fields: [empresaId], references: [id])
+  cliente   Cliente         @relation(fields: [clienteId], references: [id])
+  itens     OrcamentoItem[]
+  cobrancas Cobranca[]
 
   @@unique([empresaId, numero]) // duas empresas podem ter o orçamento nº 1, a mesma empresa não
   @@index([empresaId, criadoEm])
@@ -164,4 +178,21 @@ model OrcamentoItem {
   orcamento Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
 
   @@index([orcamentoId])
+}
+
+// Registro de cada cobrança enviada pela tela "Cobrar hoje".
+// É assim que o sistema sabe que a 1ª (ou a 2ª) cobrança de um orçamento já foi feita
+// e não a mostra de novo.
+model Cobranca {
+  id          String   @id @default(cuid())
+  empresaId   String
+  orcamentoId String
+  etapa       Int // 1 = primeira cobrança, 2 = segunda
+  mensagem    String // o texto que foi enviado (depois de editado)
+  enviadaEm   DateTime @default(now())
+
+  empresa   Empresa   @relation(fields: [empresaId], references: [id])
+  orcamento Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+
+  @@unique([orcamentoId, etapa]) // cada etapa uma vez só por orçamento
 }
