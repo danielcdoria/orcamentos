@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#1e3a8a"/>
+  <!-- folha com canto dobrado -->
+  <path d="M168 104h128l88 88v200a32 32 0 0 1-32 32H168a32 32 0 0 1-32-32V136a32 32 0 0 1 32-32z" fill="#ffffff"/>
+  <path d="M296 104v64a24 24 0 0 0 24 24h64z" fill="#c7d2fe"/>
+  <!-- linhas do texto -->
+  <rect x="184" y="248" width="144" height="20" rx="10" fill="#1e3a8a"/>
+  <rect x="184" y="296" width="144" height="20" rx="10" fill="#1e3a8a"/>
+  <rect x="184" y="344" width="88" height="20" rx="10" fill="#1e3a8a"/>
+</svg>

@@ -1,7 +1,9 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Settings, Users } from "lucide-react";
 import { exigirSessao } from "@/lib/auth";
 import { contarFila } from "@/lib/cobranca";
+import { prisma } from "@/lib/prisma";
 import { Menu } from "./menu";
 
 // Os parênteses em "(app)" criam um GRUPO: a pasta não aparece no endereço.
@@ -9,6 +11,13 @@ import { Menu } from "./menu";
 //
 // Atenção: este layout protege as PÁGINAS. As ações que gravam dados (Server Actions)
 // precisam chamar exigirSessao() por conta própria, porque podem ser chamadas diretamente.
+
+// Na aba do navegador, o ícone vira o logo da empresa (se ela cadastrou um).
+export async function generateMetadata(): Promise<Metadata> {
+  const { empresaId } = await exigirSessao();
+  const empresa = await prisma.empresa.findUnique({ where: { id: empresaId }, select: { logoUrl: true } });
+  return empresa?.logoUrl ? { icons: { icon: empresa.logoUrl, apple: empresa.logoUrl } } : {};
+}
 
 const estiloAtalho =
   "flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-lg px-2 text-[13px] text-gray-600 hover:bg-gray-100 hover:text-gray-900 md:flex-row md:gap-2 md:px-3 md:text-base";

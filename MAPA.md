@@ -81,13 +81,13 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 
 | Arquivo | O que faz |
 |---|---|
-| `src/app/layout.tsx` | Moldura comum a todas as páginas (`<html>`, fonte, título). Desliga a transformação automática de telefones em links do Safari (evita o erro "Hydration failed"). |
+| `src/app/layout.tsx` | Moldura comum a todas as páginas (`<html>`, título, ícone e imagem de prévia neutros). Desliga a transformação automática de telefones em links do Safari (evita o erro "Hydration failed"). |
 | `src/app/globals.css` | CSS global e **identidade visual**: a cor de destaque `marca` (azul escuro, só em botão principal e valores totais), fonte do sistema, fundo cinza bem claro, texto de 16px. Tem as regras de impressão/PDF (folha A4, margens, imprimir cores de fundo). As classes `print:` nas páginas também só valem na impressão. |
 | `src/app/login/page.tsx` | Tela de login (`/login`). Quem já está logado é mandado para `/`. |
 | `src/app/login/form-login.tsx` | O formulário de login (roda no navegador para mostrar erros e o "Entrando..."). |
 | `src/app/login/actions.ts` | Confere email e senha, bloqueia por 15 min após 5 erros seguidos (contagem atômica: tentativas simultâneas não furam o limite), refaz senhas no formato antigo e cria a sessão. |
 | `src/app/(app)/` | Grupo das páginas **internas** (exigem login). Os parênteses não aparecem no endereço. |
-| `src/app/(app)/layout.tsx` | Moldura das páginas internas: confere o login, mostra o nome da empresa, os atalhos Clientes e Ajustes, e conta a fila de cobrança para a bolinha vermelha do menu. |
+| `src/app/(app)/layout.tsx` | Moldura das páginas internas: confere o login, mostra o nome da empresa, os atalhos Clientes e Ajustes, e conta a fila de cobrança para a bolinha vermelha do menu. Troca o ícone da aba pelo logo da empresa, se houver. |
 | `src/app/(app)/actions.ts` | Ação `sair()`: apaga a sessão e volta para o login. |
 | `src/app/(app)/page.tsx` | Página inicial (`/`). Só redireciona para `/orcamentos`. |
 | `src/app/(app)/painel/page.tsx` | **Painel** (`/painel`): valor parado esperando resposta (em destaque), e enviados, fechados e taxa de fechamento do mês. |
@@ -117,14 +117,15 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | `src/app/(app)/configuracoes/logo.tsx` | Escolher/trocar/remover logo. Reduz a imagem no navegador (máx. 512 px) antes de enviar. |
 | `src/app/(app)/configuracoes/actions.ts` | `salvarEmpresa`, `salvarCobranca` (prazos em ordem, mensagens não vazias), `salvarLogo` (confere se o arquivo é mesmo PNG/JPG/WebP) e `removerLogo`. |
 | `src/app/logo/[empresaId]/route.ts` | Entrega a imagem do logo guardada no banco (endereço `/logo/<empresaId>`). Público, porque aparece na página do cliente. |
-| `src/app/orcamento/[token]/page.tsx` | **Página pública** do orçamento (sem login), a que o cliente abre. O `token` é um código de 64 caracteres sorteado pelo banco. O telefone da empresa é um link de ligação. Também define o título/descrição da prévia no WhatsApp, pede ao Google para não indexar e registra a abertura (ver `src/lib/abertura.ts`). |
+| `src/app/orcamento/[token]/page.tsx` | **Página pública** do orçamento (sem login), a que o cliente abre. O `token` é um código de 64 caracteres sorteado pelo banco. O telefone da empresa é um link de ligação. Também define o título/descrição/imagem da prévia no WhatsApp e o ícone da aba (logo da empresa ou o neutro), pede ao Google para não indexar e registra a abertura (ver `src/lib/abertura.ts`). |
 | `src/app/orcamento/[token]/botao-pdf.tsx` | Botão "Baixar PDF": link para `/orcamento/<token>/pdf`, que baixa o arquivo direto. |
 | `src/app/orcamento/[token]/pdf/route.ts` | Gera o PDF do orçamento no servidor e devolve para download (`orcamento-14-oficina-silva.pdf`). Público como a página do cliente. |
 | `src/app/orcamento/[token]/pdf/documento-pdf.tsx` | O desenho do PDF (folha A4): logo, número, dados, tabela de itens, total, condições. Usa `@react-pdf/renderer` (não é HTML). Só aceita logo PNG/JPG. |
 | `src/app/orcamento/[token]/not-found.tsx` | Mensagem para o **cliente** quando o link do orçamento está errado (sem link para o login). |
 | `src/app/not-found.tsx` | Página "não encontrada" (endereço inexistente ou de outra empresa). |
-| `src/app/favicon.ico` | Ícone da aba do navegador. |
-| `public/` | Imagens e arquivos servidos direto pelo endereço (`/arquivo.svg`). Vazia por enquanto (o `.gitkeep` só existe para o git guardar a pasta). |
+| `public/` | Arquivos servidos direto pelo endereço (ex.: `/icone.png`). |
+| `public/icone.png`, `apple-icone.png`, `favicon.ico`, `icone.svg` | Ícone **neutro** do sistema (quadrado azul com documento branco), usado na aba do navegador e na tela inicial do celular quando a empresa não tem logo. `icone.svg` é o desenho original. |
+| `public/og-padrao.png` | Imagem **neutra** da prévia de link (WhatsApp) quando a empresa não tem logo. |
 
 ## Scripts (`scripts/`)
 

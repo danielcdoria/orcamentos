@@ -44,15 +44,20 @@ export async function generateMetadata(props: PageProps<"/orcamento/[token]">): 
 
   const titulo = `Orçamento nº ${o.numero} · ${o.empresa.nome}`;
   const descricao = `Para ${o.cliente.nome} · Total ${formatarCentavos(o.total)} · Válido até ${formatarData(o.validoAte)}`;
+  // Com logo: a aba e a prévia do WhatsApp mostram o logo da empresa.
+  // Sem logo: ficam o ícone e a imagem neutros do sistema.
+  const logo = o.empresa.logoUrl ? `${await urlBase()}${o.empresa.logoUrl}` : null;
   return {
     title: titulo,
     description: descricao,
+    // só troca o ícone quando há logo; sem logo, fica o ícone neutro definido no layout raiz
+    ...(logo && { icons: { icon: logo, apple: logo } }),
     openGraph: {
       title: titulo,
       description: descricao,
       type: "website",
-      // o WhatsApp precisa do endereço completo da imagem para mostrar o logo na prévia
-      images: o.empresa.logoUrl ? [`${await urlBase()}${o.empresa.logoUrl}`] : undefined,
+      // o WhatsApp precisa do endereço completo da imagem
+      images: [logo ?? `${await urlBase()}/og-padrao.png`],
     },
     robots: { index: false, follow: false }, // não aparecer no Google
   };
