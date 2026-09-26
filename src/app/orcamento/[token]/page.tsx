@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData, formatarQuantidade } from "@/lib/formatos";
 import { urlBase } from "@/lib/url";
-import { formatarTelefone } from "@/lib/telefone";
+import { formatarTelefone, telefoneParaWhatsApp } from "@/lib/telefone";
 import { BotaoPdf } from "./botao-pdf";
 
 // PÁGINA PÚBLICA do orçamento: /orcamento/<token>
@@ -28,6 +28,12 @@ const buscarOrcamento = cache(async (token: string) => {
     },
   });
 });
+
+// "tel:+5521999998888" (com país) ou, se não reconhecer o número, só os dígitos.
+function linkLigacao(telefone: string): string {
+  const completo = telefoneParaWhatsApp(telefone);
+  return completo ? `tel:+${completo}` : `tel:${telefone.replace(/\D/g, "")}`;
+}
 
 // Título e descrição que aparecem na prévia do link no WhatsApp.
 export async function generateMetadata(props: PageProps<"/orcamento/[token]">): Promise<Metadata> {
@@ -79,7 +85,15 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
           )}
           <div className="min-w-0">
             <p className="text-lg font-bold leading-tight">{o.empresa.nome}</p>
-            {o.empresa.telefone && <p className="text-sm text-gray-600">{formatarTelefone(o.empresa.telefone)}</p>}
+            {o.empresa.telefone && (
+              // Link de ligação: o cliente toca no número e liga para a empresa.
+              <a
+                href={linkLigacao(o.empresa.telefone)}
+                className="text-sm text-gray-600 underline decoration-gray-300 underline-offset-2"
+              >
+                {formatarTelefone(o.empresa.telefone)}
+              </a>
+            )}
           </div>
         </header>
 

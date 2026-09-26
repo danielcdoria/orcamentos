@@ -65,7 +65,7 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 
 | Arquivo | O que faz |
 |---|---|
-| `src/app/layout.tsx` | Moldura comum a todas as páginas (`<html>`, fonte, título). |
+| `src/app/layout.tsx` | Moldura comum a todas as páginas (`<html>`, fonte, título). Desliga a transformação automática de telefones em links do Safari (evita o erro "Hydration failed"). |
 | `src/app/globals.css` | CSS global; é onde o Tailwind é carregado. Modo escuro desligado até a semana 4. Tem as regras de impressão/PDF (folha A4, margens, imprimir cores de fundo). As classes `print:` nas páginas também só valem na impressão. |
 | `src/app/login/page.tsx` | Tela de login (`/login`). Quem já está logado é mandado para `/`. |
 | `src/app/login/form-login.tsx` | O formulário de login (roda no navegador para mostrar erros e o "Entrando..."). |
@@ -96,7 +96,7 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | `src/app/(app)/configuracoes/logo.tsx` | Escolher/trocar/remover logo. Reduz a imagem no navegador (máx. 512 px) antes de enviar. |
 | `src/app/(app)/configuracoes/actions.ts` | `salvarEmpresa`, `salvarLogo` (confere se o arquivo é mesmo PNG/JPG/WebP) e `removerLogo`. |
 | `src/app/logo/[empresaId]/route.ts` | Entrega a imagem do logo guardada no banco (endereço `/logo/<empresaId>`). Público, porque aparece na página do cliente. |
-| `src/app/orcamento/[token]/page.tsx` | **Página pública** do orçamento (sem login), a que o cliente abre. O `token` é um código de 64 caracteres sorteado pelo banco. Também define o título/descrição da prévia no WhatsApp, pede ao Google para não indexar e registra a abertura (ver `src/lib/abertura.ts`). |
+| `src/app/orcamento/[token]/page.tsx` | **Página pública** do orçamento (sem login), a que o cliente abre. O `token` é um código de 64 caracteres sorteado pelo banco. O telefone da empresa é um link de ligação. Também define o título/descrição da prévia no WhatsApp, pede ao Google para não indexar e registra a abertura (ver `src/lib/abertura.ts`). |
 | `src/app/orcamento/[token]/botao-pdf.tsx` | Botão "Baixar PDF": abre a impressão do navegador (Salvar como PDF). Some na impressão. |
 | `src/app/orcamento/[token]/not-found.tsx` | Mensagem para o **cliente** quando o link do orçamento está errado (sem link para o login). |
 | `src/app/not-found.tsx` | Página "não encontrada" (endereço inexistente ou de outra empresa). |

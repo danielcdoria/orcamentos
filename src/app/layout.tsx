@@ -15,6 +15,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Orçamentos",
   description: "Orçamentos rápidos para pequenas empresas",
+  // Impede o Safari do iPhone de transformar números de telefone em links por conta
+  // própria (isso muda a página depois de carregada e o React acusa "Hydration failed").
+  // Onde quisermos um link de ligação, colocamos nós mesmos.
+  formatDetection: { telephone: false, email: false, address: false },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
