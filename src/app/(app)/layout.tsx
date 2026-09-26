@@ -16,8 +16,8 @@ export default async function LayoutInterno({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-gray-200">
-        <div className="mx-auto flex max-w-3xl items-center gap-6 px-5 py-4">
-          <span className="truncate text-lg font-semibold">{empresaNome}</span>
+        <div className="mx-auto flex max-w-5xl items-center gap-6 px-5 py-4">
+          <span className="min-w-0 truncate text-lg font-semibold md:max-w-56 md:shrink-0">{empresaNome}</span>
           {/* No computador o menu fica aqui no topo; no celular ele vai para o rodapé */}
           <Menu />
           <div className="ml-auto flex shrink-0 items-center gap-1">

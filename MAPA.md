@@ -40,6 +40,7 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 | `src/lib/sessao.ts` | Cria, lê e apaga a sessão (o cookie `sessao` + a linha na tabela Sessao). Login dura 30 dias. |
 | `src/lib/senha.ts` | Embaralha a senha (hash com scrypt) e confere a senha digitada no login. |
 | `src/lib/cobranca.ts` | **A regra de cobrança.** Conta os dias desde o envio (calendário de Brasília), decide a etapa devida (1ª ou 2ª), escolhe o modelo certo (abriu/não abriu), monta a fila de "Cobrar hoje" (`buscarFila`), conta a fila para o aviso (`contarFila`, mesma decisão) e marca como perdido quem passou do prazo. Não há "relógio": roda sempre que o sistema é aberto. |
+| `src/lib/mes.ts` | `mesAtual()`: início e fim do mês atual no horário de Brasília, e o nome ("setembro de 2026"). |
 | `src/lib/status.ts` | Nome e cor de cada status, e quais contam como "esperando o cliente" (enviado, aberto). |
 | `src/lib/abertura.ts` | Registro de abertura do link público. Decide se a visita conta (ignora robôs como a prévia do WhatsApp, a própria empresa logada e pré-carregamentos) e grava `abertoEm` (1ª vez) e `vezesAberto`. Muda o status para **aberto** (se era rascunho ou enviado); se era rascunho, também marca como enviado agora. Aberturas com menos de 30 min de diferença contam como uma só (`ultimaAberturaEm`). |
 | `src/lib/telefone.ts` | `telefoneParaWhatsApp` (limpa o número e põe o 55 do Brasil: "(21) 99999-8888" → "5521999998888") e `formatarTelefone` (mostra como "(21) 99999-8888"). |
@@ -76,8 +77,9 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | `src/app/(app)/` | Grupo das páginas **internas** (exigem login). Os parênteses não aparecem no endereço. |
 | `src/app/(app)/layout.tsx` | Moldura das páginas internas: confere o login e mostra o nome da empresa, o link Configurações e o botão Sair. |
 | `src/app/(app)/actions.ts` | Ação `sair()`: apaga a sessão e volta para o login. |
-| `src/app/(app)/page.tsx` | Página inicial (`/`). Só redireciona para `/orcamentos`. |
-| `src/app/(app)/menu.tsx` | Menu principal (Cobrar, Orçamentos, Clientes, Catálogo): abas no topo no computador, barra fixa no rodapé no celular. |
+| `src/app/(app)/page.tsx` | Página inicial (`/`). Só redireciona para `/painel`. |
+| `src/app/(app)/painel/page.tsx` | **Painel** (`/painel`): valor parado esperando resposta (em destaque), e enviados, fechados e taxa de fechamento do mês. |
+| `src/app/(app)/menu.tsx` | Menu principal (Painel, Cobrar, Orçamentos, Clientes, Catálogo): abas no topo no computador, barra fixa no rodapé no celular. |
 | `src/app/(app)/cobrar/page.tsx` | **Cobrar hoje** (`/cobrar`), a tela principal do produto: lista quem precisa ser cobrado hoje (regra em `src/lib/cobranca.ts`). |
 | `src/app/(app)/cobrar/cartao-cobranca.tsx` | Um cartão por cliente: valor, há quantos dias foi enviado, se abriu, qual cobrança, mensagem editável e os botões "Enviar no WhatsApp" e "Já respondeu". |
 | `src/app/(app)/cobrar/actions.ts` | `registrarCobranca` (grava a cobrança enviada, com o texto final, e tira da fila) e `marcarRespondido`. O sistema nunca envia nada sozinho. |

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// A página inicial é a lista de orçamentos.
+// A página inicial é o painel.
 export default function Inicio() {
-  redirect("/orcamentos");
+  redirect("/painel");
 }

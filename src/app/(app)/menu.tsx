@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const itens = [
+  { href: "/painel", rotulo: "Painel" },
   { href: "/cobrar", rotulo: "Cobrar" },
   { href: "/orcamentos", rotulo: "Orçamentos" },
   { href: "/clientes", rotulo: "Clientes" },
@@ -26,7 +27,7 @@ export function Menu() {
             <li key={item.href} className="flex-1 md:flex-none">
               <Link
                 href={item.href}
-                className={`block py-4 text-center text-sm md:rounded-lg md:px-4 md:py-2 ${
+                className={`block py-4 text-center text-xs sm:text-sm md:rounded-lg md:px-4 md:py-2 ${
                   ativo
                     ? "font-semibold text-gray-900 md:bg-gray-100"
                     : "text-gray-500 hover:text-gray-900"
