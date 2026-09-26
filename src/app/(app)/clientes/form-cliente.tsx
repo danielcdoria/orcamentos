@@ -8,9 +8,9 @@ import { estiloBotao, estiloBotaoSecundario, estiloCampo, estiloErro, estiloRotu
 type Cliente = { id: string; nome: string; telefone: string | null; observacao: string | null };
 
 // O mesmo formulário serve para criar (sem cliente) e editar (com cliente).
-export function FormCliente({ cliente }: { cliente?: Cliente }) {
-  // bind "prende" o id como primeiro argumento da ação
-  const acaoComId = salvarCliente.bind(null, cliente?.id ?? null);
+export function FormCliente({ cliente, voltar }: { cliente?: Cliente; voltar?: string }) {
+  // bind "prende" o id e o "voltar" como primeiros argumentos da ação
+  const acaoComId = salvarCliente.bind(null, cliente?.id ?? null, voltar ?? null);
   const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(acaoComId, {});
   // Depois de um erro, mostra o que foi digitado; senão, os dados do cliente (ou vazio).
   const v = estado.valores ?? {
@@ -18,16 +18,17 @@ export function FormCliente({ cliente }: { cliente?: Cliente }) {
     telefone: cliente?.telefone ?? "",
     observacao: cliente?.observacao ?? "",
   };
+  const cancelar = voltar === "orcamento" ? "/orcamentos/novo" : "/clientes";
 
   return (
     <form action={acao} className="flex flex-col gap-5">
-      <label className="flex flex-col gap-1">
-        <span className={estiloRotulo}>Nome *</span>
-        <input name="nome" required maxLength={120} defaultValue={v.nome} className={estiloCampo} />
+      <label className="flex flex-col gap-2">
+        <span className={estiloRotulo}>Nome</span>
+        <input name="nome" required maxLength={120} autoComplete="off" defaultValue={v.nome} className={estiloCampo} />
       </label>
 
-      <label className="flex flex-col gap-1">
-        <span className={estiloRotulo}>Telefone</span>
+      <label className="flex flex-col gap-2">
+        <span className={estiloRotulo}>WhatsApp / telefone</span>
         <input
           name="telefone"
           type="tel"
@@ -36,14 +37,16 @@ export function FormCliente({ cliente }: { cliente?: Cliente }) {
           defaultValue={v.telefone}
           className={estiloCampo}
         />
+        <span className="text-sm text-gray-600">Com DDD, para o orçamento ir direto para a conversa dele.</span>
       </label>
 
-      <label className="flex flex-col gap-1">
-        <span className={estiloRotulo}>Observação</span>
+      <label className="flex flex-col gap-2">
+        <span className={estiloRotulo}>Observação (opcional)</span>
         <textarea
           name="observacao"
           rows={3}
           maxLength={1000}
+          placeholder="Ex.: carro, endereço, como prefere ser atendido..."
           defaultValue={v.observacao}
           className={estiloCampo}
         />
@@ -51,13 +54,13 @@ export function FormCliente({ cliente }: { cliente?: Cliente }) {
 
       {estado.erro && <p role="alert" className={estiloErro}>{estado.erro}</p>}
 
-      <div className="mt-2 flex gap-3">
-        <Link href="/clientes" className={`flex-1 ${estiloBotaoSecundario}`}>
+      <div className="mt-2 flex flex-col gap-3">
+        <button type="submit" disabled={enviando} className={`${estiloBotao} w-full text-lg`}>
+          {enviando ? "Salvando..." : "Salvar cliente"}
+        </button>
+        <Link href={cancelar} className={`${estiloBotaoSecundario} w-full`}>
           Cancelar
         </Link>
-        <button type="submit" disabled={enviando} className={`flex-1 ${estiloBotao}`}>
-          {enviando ? "Salvando..." : "Salvar"}
-        </button>
       </div>
     </form>
   );

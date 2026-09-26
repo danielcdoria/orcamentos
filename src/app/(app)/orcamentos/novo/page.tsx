@@ -1,10 +1,13 @@
-import Link from "next/link";
+import { Package, UserPlus } from "lucide-react";
 import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { estiloTitulo } from "@/components/estilos";
+import { EstadoVazio } from "@/components/estado-vazio";
 import { FormOrcamento } from "./form-orcamento";
 
-export default async function NovoOrcamento() {
+export default async function NovoOrcamento(props: PageProps<"/orcamentos/novo">) {
   const { empresaId } = await exigirSessao();
+  const { cliente } = await props.searchParams; // vem preenchido quando o cliente acabou de ser cadastrado
 
   // O catálogo inteiro vai para o navegador, para a busca ser instantânea.
   // Para catálogos de pequenas empresas (algumas centenas de itens) isso é leve.
@@ -21,28 +24,31 @@ export default async function NovoOrcamento() {
     }),
   ]);
 
+  const clienteInicial =
+    typeof cliente === "string" && clientes.some((c) => c.id === cliente) ? cliente : "";
+
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold">Novo orçamento</h1>
+      <h1 className={estiloTitulo}>Novo orçamento</h1>
 
-      {clientes.length === 0 || catalogo.length === 0 ? (
-        <p className="text-gray-600">
-          Para criar um orçamento, cadastre antes pelo menos{" "}
-          {clientes.length === 0 && (
-            <Link href="/clientes/novo" className="underline">
-              um cliente
-            </Link>
-          )}
-          {clientes.length === 0 && catalogo.length === 0 && " e "}
-          {catalogo.length === 0 && (
-            <Link href="/catalogo/novo" className="underline">
-              um item no catálogo
-            </Link>
-          )}
-          .
-        </p>
+      {clientes.length === 0 ? (
+        <EstadoVazio
+          icone={UserPlus}
+          titulo="Primeiro, cadastre um cliente"
+          texto="O orçamento precisa ser para alguém. Cadastre o cliente (nome e telefone) e volte aqui."
+          botao="Cadastrar cliente"
+          href="/clientes/novo?voltar=orcamento"
+        />
+      ) : catalogo.length === 0 ? (
+        <EstadoVazio
+          icone={Package}
+          titulo="Primeiro, cadastre o que você vende"
+          texto="Os itens do orçamento vêm do seu catálogo de produtos e serviços, com o preço. Cadastre pelo menos um."
+          botao="Cadastrar item"
+          href="/catalogo/novo"
+        />
       ) : (
-        <FormOrcamento clientes={clientes} catalogo={catalogo} />
+        <FormOrcamento clientes={clientes} catalogo={catalogo} clienteInicial={clienteInicial} />
       )}
     </div>
   );

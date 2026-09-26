@@ -1,24 +1,22 @@
 import Link from "next/link";
+import { BellRing, ChevronRight, FileText, Plus } from "lucide-react";
 import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatarCentavos } from "@/lib/dinheiro";
-import { formatarDataCurta } from "@/lib/formatos";
-import { estiloBotao } from "@/components/estilos";
-import { SeletorStatus } from "@/components/seletor-status";
+import { formatarData } from "@/lib/formatos";
 import { contarFila } from "@/lib/cobranca";
+import { estiloBotao, estiloCartao, estiloTitulo } from "@/components/estilos";
+import { SeletorStatus } from "@/components/seletor-status";
+import { EstadoVazio } from "@/components/estado-vazio";
 
-// "Visto" em verde forte quando o cliente já abriu; "Não visto" em cinza quando não.
+// Selo: o cliente já abriu o link do orçamento?
 function SeloAbertura({ abertoEm, vezes }: { abertoEm: Date | null; vezes: number }) {
   if (!abertoEm) {
-    return (
-      <span className="shrink-0 rounded-full border border-gray-300 px-2 py-0.5 text-xs text-gray-600">
-        Não visto
-      </span>
-    );
+    return <span className="rounded-full px-2.5 py-0.5 text-sm text-gray-600 ring-1 ring-gray-300">Não viu</span>;
   }
   return (
-    <span className="shrink-0 rounded-full bg-green-700 px-2 py-0.5 text-xs font-semibold text-white">
-      Visto{vezes > 1 ? ` ${vezes}x` : ""}
+    <span className="rounded-full bg-green-50 px-2.5 py-0.5 text-sm font-medium text-green-800">
+      Viu{vezes > 1 ? ` ${vezes}x` : ""}
     </span>
   );
 }
@@ -48,48 +46,51 @@ export default async function PaginaOrcamentos() {
 
   return (
     <div className="flex flex-col gap-6">
+      <h1 className={estiloTitulo}>Orçamentos</h1>
+
+      <Link href="/orcamentos/novo" className={`${estiloBotao} w-full text-lg`}>
+        <Plus className="size-5" aria-hidden />
+        Novo orçamento
+      </Link>
+
       {paraCobrar > 0 && (
         <Link
           href="/cobrar"
-          className="flex items-center justify-between gap-4 rounded-xl bg-amber-400 px-5 py-4 font-semibold text-gray-900 shadow-sm hover:bg-amber-300"
+          className="flex min-h-14 items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-base font-semibold text-amber-900 hover:bg-amber-100"
         >
-          <span>
+          <BellRing className="size-5 shrink-0" aria-hidden />
+          <span className="flex-1">
             {paraCobrar === 1
-              ? "1 orçamento esperando cobrança hoje"
-              : `${paraCobrar} orçamentos esperando cobrança hoje`}
+              ? "1 cliente esperando cobrança hoje"
+              : `${paraCobrar} clientes esperando cobrança hoje`}
           </span>
-          <span aria-hidden className="text-xl">→</span>
+          <ChevronRight className="size-5 shrink-0" aria-hidden />
         </Link>
       )}
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Orçamentos</h1>
-        <Link href="/orcamentos/novo" className={`${estiloBotao} py-2`}>
-          + Novo
-        </Link>
-      </div>
-
       {orcamentos.length === 0 ? (
-        <p className="text-gray-600">Nenhum orçamento ainda. Toque em “+ Novo” para criar o primeiro.</p>
+        <EstadoVazio
+          icone={FileText}
+          titulo="Nenhum orçamento ainda"
+          texto="Toque em “Novo orçamento”, escolha o cliente e os itens. Em um minuto ele está pronto para mandar no WhatsApp."
+        />
       ) : (
-        <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
+        <ul className={`${estiloCartao} divide-y divide-gray-200`}>
           {orcamentos.map((o) => (
-            <li key={o.id} className="flex flex-col gap-2 px-5 py-4 hover:bg-gray-50">
+            <li key={o.id} className="flex flex-col gap-3 px-4 py-4">
               <Link href={`/orcamentos/${o.id}`} className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <span className="block truncate font-medium">{o.cliente.nome}</span>
-                  <span className="mt-1 flex items-center gap-2 text-sm text-gray-600">
-                    <span className="whitespace-nowrap">
-                      Nº {o.numero} · {formatarDataCurta(o.criadoEm)}
-                    </span>
-                    <SeloAbertura abertoEm={o.abertoEm} vezes={o.vezesAberto} />
-                  </span>
+                  <p className="truncate text-lg font-semibold">{o.cliente.nome}</p>
+                  <p className="mt-0.5 text-base text-gray-600">
+                    Nº {o.numero} · {formatarData(o.criadoEm)}
+                  </p>
                 </div>
-                <span className="shrink-0 font-semibold">{formatarCentavos(o.total)}</span>
+                <p className="shrink-0 text-lg font-bold">{formatarCentavos(o.total)}</p>
               </Link>
               {/* Fora do link: mudar o status aqui não abre o orçamento */}
-              <div>
+              <div className="flex flex-wrap items-center gap-2">
                 <SeletorStatus id={o.id} status={o.status} />
+                {o.status !== "rascunho" && <SeloAbertura abertoEm={o.abertoEm} vezes={o.vezesAberto} />}
               </div>
             </li>
           ))}

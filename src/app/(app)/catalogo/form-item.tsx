@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useTransition } from "react";
+import { Trash2 } from "lucide-react";
 import { apagarItem, salvarItem, type EstadoForm } from "./actions";
 import {
   estiloBotao,
@@ -14,7 +15,7 @@ import {
 
 type Item = { id: string; descricao: string; unidade: string; precoTexto: string };
 
-const UNIDADES = ["un", "m²", "m", "m³", "h", "kg", "serviço", "diária"];
+const UNIDADES = ["un", "m²", "m", "m³", "h", "kg", "serviço", "diária", "par", "jogo", "kit"];
 
 export function FormItem({ item }: { item?: Item }) {
   const acaoComId = salvarItem.bind(null, item?.id ?? null);
@@ -29,27 +30,27 @@ export function FormItem({ item }: { item?: Item }) {
 
   function confirmarApagar() {
     if (!item) return;
-    if (!confirm(`Apagar "${item.descricao}" do catálogo?`)) return;
+    if (!confirm(`Apagar "${item.descricao}" do catálogo? Os orçamentos já feitos não mudam.`)) return;
     iniciarApagar(() => apagarItem(item.id));
   }
 
   return (
     <form action={acao} className="flex flex-col gap-5">
-      <label className="flex flex-col gap-1">
-        <span className={estiloRotulo}>Descrição *</span>
+      <label className="flex flex-col gap-2">
+        <span className={estiloRotulo}>Nome do produto ou serviço</span>
         <input
           name="descricao"
           required
           maxLength={200}
-          placeholder="Ex.: Banner em lona 440g"
+          placeholder="Ex.: Troca de óleo"
           defaultValue={v.descricao}
           className={estiloCampo}
         />
       </label>
 
-      <div className="mt-2 flex gap-3">
-        <label className="flex flex-1 flex-col gap-1">
-          <span className={estiloRotulo}>Preço (R$) *</span>
+      <div className="grid grid-cols-[1fr_8rem] gap-3">
+        <label className="flex flex-col gap-2">
+          <span className={estiloRotulo}>Preço (R$)</span>
           <input
             name="preco"
             required
@@ -60,16 +61,10 @@ export function FormItem({ item }: { item?: Item }) {
           />
         </label>
 
-        <label className="flex w-28 flex-col gap-1">
-          <span className={estiloRotulo}>Unidade</span>
+        <label className="flex flex-col gap-2">
+          <span className={estiloRotulo}>Cobrado por</span>
           {/* list="unidades" mostra sugestões, mas aceita qualquer texto */}
-          <input
-            name="unidade"
-            list="unidades"
-            maxLength={20}
-            defaultValue={v.unidade}
-            className={estiloCampo}
-          />
+          <input name="unidade" list="unidades" maxLength={20} defaultValue={v.unidade} className={estiloCampo} />
           <datalist id="unidades">
             {UNIDADES.map((u) => (
               <option key={u} value={u} />
@@ -77,21 +72,23 @@ export function FormItem({ item }: { item?: Item }) {
           </datalist>
         </label>
       </div>
+      <p className="-mt-2 text-sm text-gray-600">“Cobrado por”: un (unidade), m², h (hora), kg, serviço...</p>
 
       {estado.erro && <p role="alert" className={estiloErro}>{estado.erro}</p>}
 
-      <div className="mt-2 flex gap-3">
-        <Link href="/catalogo" className={`flex-1 ${estiloBotaoSecundario}`}>
+      <div className="mt-2 flex flex-col gap-3">
+        <button type="submit" disabled={enviando} className={`${estiloBotao} w-full text-lg`}>
+          {enviando ? "Salvando..." : "Salvar item"}
+        </button>
+        <Link href="/catalogo" className={`${estiloBotaoSecundario} w-full`}>
           Cancelar
         </Link>
-        <button type="submit" disabled={enviando} className={`flex-1 ${estiloBotao}`}>
-          {enviando ? "Salvando..." : "Salvar"}
-        </button>
       </div>
 
       {item && (
-        <button type="button" onClick={confirmarApagar} disabled={apagando} className={estiloBotaoPerigo}>
-          {apagando ? "Apagando..." : "Apagar item"}
+        <button type="button" onClick={confirmarApagar} disabled={apagando} className={`${estiloBotaoPerigo} mt-6 w-full`}>
+          <Trash2 className="size-5" aria-hidden />
+          {apagando ? "Apagando..." : "Apagar do catálogo"}
         </button>
       )}
     </form>

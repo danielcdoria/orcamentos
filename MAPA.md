@@ -63,8 +63,10 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 
 | Arquivo | O que faz |
 |---|---|
-| `src/components/seletor-status.tsx` | Seletor de status (Rascunho, Enviado, Aberto, Respondido, Fechado, Perdido) usado na lista e na tela do orçamento. Muda na hora, sem abrir o orçamento. |
-| `src/components/estilos.ts` | Classes do Tailwind de campos, botões (inclusive o verde do WhatsApp) e mensagens de erro, usadas em todas as telas. Mudar aqui muda o visual do sistema todo. |
+| `src/components/seletor-status.tsx` | Seletor de status (Rascunho, Enviado, Aberto, Respondido, Fechado, Perdido) usado na lista e na tela do orçamento. Muda na hora e mostra "Salvo ✓". |
+| `src/components/aviso.tsx` | Aviso verde de "deu certo" (ex.: "Cliente salvo."), mostrado quando a tela recebe `?ok=<código>`. Os códigos e textos ficam aqui. |
+| `src/components/estado-vazio.tsx` | Tela vazia padrão: ícone, título, explicação do que fazer e botão. |
+| `src/components/estilos.ts` | Classes do Tailwind de campos (48px), botões (principal azul `marca`, secundário, perigo), cartões, títulos e mensagens. Mudar aqui muda o visual do sistema todo. |
 
 ## Telas (`src/app/`)
 
@@ -80,16 +82,16 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | Arquivo | O que faz |
 |---|---|
 | `src/app/layout.tsx` | Moldura comum a todas as páginas (`<html>`, fonte, título). Desliga a transformação automática de telefones em links do Safari (evita o erro "Hydration failed"). |
-| `src/app/globals.css` | CSS global; é onde o Tailwind é carregado. Modo escuro desligado até a semana 4. Tem as regras de impressão/PDF (folha A4, margens, imprimir cores de fundo). As classes `print:` nas páginas também só valem na impressão. |
+| `src/app/globals.css` | CSS global e **identidade visual**: a cor de destaque `marca` (azul escuro, só em botão principal e valores totais), fonte do sistema, fundo cinza bem claro, texto de 16px. Tem as regras de impressão/PDF (folha A4, margens, imprimir cores de fundo). As classes `print:` nas páginas também só valem na impressão. |
 | `src/app/login/page.tsx` | Tela de login (`/login`). Quem já está logado é mandado para `/`. |
 | `src/app/login/form-login.tsx` | O formulário de login (roda no navegador para mostrar erros e o "Entrando..."). |
 | `src/app/login/actions.ts` | Confere email e senha, bloqueia por 15 min após 5 erros seguidos (contagem atômica: tentativas simultâneas não furam o limite), refaz senhas no formato antigo e cria a sessão. |
 | `src/app/(app)/` | Grupo das páginas **internas** (exigem login). Os parênteses não aparecem no endereço. |
-| `src/app/(app)/layout.tsx` | Moldura das páginas internas: confere o login e mostra o nome da empresa, o link Configurações e o botão Sair. |
+| `src/app/(app)/layout.tsx` | Moldura das páginas internas: confere o login, mostra o nome da empresa, os atalhos Clientes e Ajustes, e conta a fila de cobrança para a bolinha vermelha do menu. |
 | `src/app/(app)/actions.ts` | Ação `sair()`: apaga a sessão e volta para o login. |
-| `src/app/(app)/page.tsx` | Página inicial (`/`). Só redireciona para `/painel`. |
+| `src/app/(app)/page.tsx` | Página inicial (`/`). Só redireciona para `/orcamentos`. |
 | `src/app/(app)/painel/page.tsx` | **Painel** (`/painel`): valor parado esperando resposta (em destaque), e enviados, fechados e taxa de fechamento do mês. |
-| `src/app/(app)/menu.tsx` | Menu principal (Painel, Cobrar, Orçamentos, Clientes, Catálogo): abas no topo no computador, barra fixa no rodapé no celular. |
+| `src/app/(app)/menu.tsx` | Menu principal com 4 ícones (Orçamentos, Cobrar hoje, Catálogo, Painel): barra fixa embaixo no celular, abas no topo no computador. "Cobrar hoje" tem a bolinha vermelha com o número. |
 | `src/app/(app)/cobrar/page.tsx` | **Cobrar hoje** (`/cobrar`), a tela principal do produto: lista quem precisa ser cobrado hoje (regra em `src/lib/cobranca.ts`). |
 | `src/app/(app)/cobrar/cartao-cobranca.tsx` | Um cartão por cliente: valor, há quantos dias foi enviado, se abriu, qual cobrança, mensagem editável e os botões "Enviar no WhatsApp" e "Já respondeu". |
 | `src/app/(app)/cobrar/actions.ts` | `registrarCobranca` (grava a cobrança enviada, com o texto final, e tira da fila) e `marcarRespondido`. O sistema nunca envia nada sozinho. |
@@ -109,7 +111,7 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | `src/app/(app)/catalogo/[id]/page.tsx` | Tela de editar item (com botão Apagar). |
 | `src/app/(app)/catalogo/form-item.tsx` | Formulário de item (descrição, preço, unidade). |
 | `src/app/(app)/catalogo/actions.ts` | `salvarItem` e `apagarItem`. |
-| `src/app/(app)/configuracoes/page.tsx` | Tela de configurações da empresa (`/configuracoes`). |
+| `src/app/(app)/configuracoes/page.tsx` | Tela **Ajustes** (`/configuracoes`): logo, dados da empresa, cobrança e o botão **Sair do sistema**. |
 | `src/app/(app)/configuracoes/form-empresa.tsx` | Formulário: nome, telefone, condição de pagamento, dias de validade e mensagem de envio (com prévia ao vivo). |
 | `src/app/(app)/configuracoes/form-cobranca.tsx` | Seção Cobrança: prazos (1ª, 2ª, perdido) e os 4 modelos de mensagem (1ª/2ª × abriu/não abriu). |
 | `src/app/(app)/configuracoes/logo.tsx` | Escolher/trocar/remover logo. Reduz a imagem no navegador (máx. 512 px) antes de enviar. |

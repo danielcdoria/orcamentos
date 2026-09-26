@@ -3,6 +3,7 @@ import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { centavosParaTexto } from "@/lib/dinheiro";
 import { FormItem } from "../form-item";
+import { estiloTitulo } from "@/components/estilos";
 
 export default async function EditarItem(props: PageProps<"/catalogo/[id]">) {
   const { id } = await props.params;
@@ -13,7 +14,7 @@ export default async function EditarItem(props: PageProps<"/catalogo/[id]">) {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold">Editar item</h1>
+      <h1 className={estiloTitulo}>Editar item</h1>
       <FormItem
         item={{
           id: item.id,

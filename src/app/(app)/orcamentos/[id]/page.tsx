@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronLeft, Download, Eye } from "lucide-react";
 import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatarCentavos } from "@/lib/dinheiro";
@@ -9,11 +10,13 @@ import { montarMensagem } from "@/lib/mensagem";
 import { telefoneParaWhatsApp } from "@/lib/telefone";
 import { BotoesEnvio } from "./botoes-envio";
 import { SeletorStatus } from "@/components/seletor-status";
-import { estiloBotaoSecundario } from "@/components/estilos";
+import { Aviso } from "@/components/aviso";
+import { estiloBotaoSecundario, estiloCartao, estiloTitulo } from "@/components/estilos";
 
-// Tela INTERNA de um orçamento (exige login). Daqui se abre a página pública.
+// Tela INTERNA de um orçamento (exige login). Daqui se envia e se acompanha o orçamento.
 export default async function DetalheOrcamento(props: PageProps<"/orcamentos/[id]">) {
   const { id } = await props.params;
+  const { ok } = await props.searchParams;
   const { empresaId } = await exigirSessao();
 
   const o = await prisma.orcamento.findFirst({
@@ -42,90 +45,96 @@ export default async function DetalheOrcamento(props: PageProps<"/orcamentos/[id
   // wa.me/<número>?text=<mensagem>. Sem número, o WhatsApp deixa escolher o contato.
   const urlWhatsApp = `https://wa.me/${telefone ?? ""}?text=${encodeURIComponent(mensagem)}`;
 
+  // Histórico do orçamento, em ordem
+  const historico: string[] = [`Criado em ${formatarDataHora(o.criadoEm)}`];
+  if (o.enviadoEm) historico.push(`Enviado em ${formatarDataHora(o.enviadoEm)}`);
+  if (o.abertoEm) {
+    historico.push(
+      `O cliente viu em ${formatarDataHora(o.abertoEm)}${o.vezesAberto > 1 ? ` (voltou a olhar ${o.vezesAberto - 1}x)` : ""}`,
+    );
+  }
+  for (const c of o.cobrancas) historico.push(`${c.etapa}ª cobrança enviada em ${formatarDataHora(c.enviadaEm)}`);
+
   return (
     <div className="flex flex-col gap-6">
+      <Link href="/orcamentos" className="-ml-2 flex min-h-11 w-fit items-center gap-1 px-2 text-base text-gray-700">
+        <ChevronLeft className="size-5" aria-hidden />
+        Orçamentos
+      </Link>
+
+      <Aviso codigo={ok} />
+
       <div>
-        <Link href="/orcamentos" className="text-sm text-gray-600 hover:text-gray-900">
-          ← Orçamentos
-        </Link>
-        <h1 className="mt-2 text-2xl font-bold">Orçamento nº {o.numero}</h1>
-        <p className="mt-1 text-gray-600">
-          {o.cliente.nome} · {formatarData(o.criadoEm)}
+        <h1 className={estiloTitulo}>Orçamento nº {o.numero}</h1>
+        <p className="mt-1 text-lg">{o.cliente.nome}</p>
+        <p className="text-base text-gray-600">
+          {formatarData(o.criadoEm)} · válido até {formatarData(o.validoAte)}
         </p>
         <div className="mt-3">
           <SeletorStatus id={o.id} status={o.status} />
         </div>
       </div>
 
-      {o.enviadoEm && (
-        <p className="rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-800">
-          Enviado pelo WhatsApp em {formatarDataHora(o.enviadoEm)}.
-        </p>
-      )}
-
-      {o.cobrancas.map((c) => (
-        <p key={c.etapa} className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {c.etapa}ª cobrança enviada em {formatarDataHora(c.enviadaEm)}.
-        </p>
-      ))}
-
-      <p
-        className={`rounded-lg px-4 py-3 text-sm ${
-          o.abertoEm ? "bg-green-50 text-green-800" : "bg-gray-50 text-gray-600"
-        }`}
-      >
-        {o.abertoEm
-          ? `O cliente abriu em ${formatarDataHora(o.abertoEm)}${
-              o.vezesAberto > 1 ? ` (${o.vezesAberto} vezes no total)` : ""
-            }.`
-          : "O cliente ainda não abriu este orçamento."}
-      </p>
-
-      <div className="flex items-center justify-between rounded-lg bg-gray-100 px-4 py-4">
-        <span className="font-medium">Total</span>
-        <span className="text-xl font-bold">{formatarCentavos(o.total)}</span>
+      <div className={`${estiloCartao} flex items-center justify-between px-5 py-5`}>
+        <span className="text-lg font-medium">Total</span>
+        <span className="text-3xl font-extrabold text-marca tabular-nums">{formatarCentavos(o.total)}</span>
       </div>
-
-      <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
-        {o.itens.map((item) => (
-          <li key={item.id} className="flex items-start justify-between gap-4 px-5 py-3">
-            <div className="min-w-0">
-              <span className="block">{item.descricao}</span>
-              <span className="block text-sm text-gray-600">
-                {formatarQuantidade(item.quantidade)} × {formatarCentavos(item.precoUnitario)}
-              </span>
-            </div>
-            <span className="shrink-0">{formatarCentavos(item.subtotal)}</span>
-          </li>
-        ))}
-      </ul>
-
-      {o.observacao && (
-        <div>
-          <h2 className="text-sm font-medium text-gray-700">Observação</h2>
-          <p className="mt-1 whitespace-pre-line">{o.observacao}</p>
-        </div>
-      )}
 
       <BotoesEnvio
         orcamentoId={o.id}
         link={linkPublico}
         urlWhatsApp={urlWhatsApp}
         temTelefone={telefone !== null}
+        jaEnviado={o.enviadoEm !== null}
       />
 
-      <div className="flex flex-col gap-1">
-        {/* <a> comum (e não <Link>) de propósito: o <Link> do Next "pré-carrega" a página
-            em segundo plano. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {/* <a> comum (e não <Link>): o <Link> do Next "pré-carrega" a página em segundo plano. */}
         <a href={linkPublico} target="_blank" rel="noopener" className={estiloBotaoSecundario}>
+          <Eye className="size-5" aria-hidden />
           Ver como o cliente vê
         </a>
-        <p className="break-all text-center text-xs text-gray-500">{linkPublico}</p>
+        <a href={`/orcamento/${o.token}/pdf`} download className={estiloBotaoSecundario}>
+          <Download className="size-5" aria-hidden />
+          Baixar PDF
+        </a>
       </div>
 
-      <Link href="/orcamentos/novo" className={estiloBotaoSecundario}>
-        + Novo orçamento
-      </Link>
+      <section className="flex flex-col gap-2">
+        <h2 className="text-lg font-semibold">Itens</h2>
+        <ul className={`${estiloCartao} divide-y divide-gray-200`}>
+          {o.itens.map((item) => (
+            <li key={item.id} className="flex items-start justify-between gap-4 px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-base">{item.descricao}</p>
+                <p className="text-base text-gray-600">
+                  {formatarQuantidade(item.quantidade)} × {formatarCentavos(item.precoUnitario)}
+                </p>
+              </div>
+              <p className="shrink-0 text-base font-semibold">{formatarCentavos(item.subtotal)}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {o.observacao && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-lg font-semibold">Observação</h2>
+          <p className="text-base whitespace-pre-line text-gray-800">{o.observacao}</p>
+        </section>
+      )}
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-lg font-semibold">Histórico</h2>
+        <ol className="flex flex-col gap-2 border-l-2 border-gray-200 pl-4">
+          {historico.map((linha) => (
+            <li key={linha} className="text-base text-gray-700">
+              {linha}
+            </li>
+          ))}
+          {!o.abertoEm && o.enviadoEm && <li className="text-base text-gray-500">O cliente ainda não viu.</li>}
+        </ol>
+      </section>
     </div>
   );
 }

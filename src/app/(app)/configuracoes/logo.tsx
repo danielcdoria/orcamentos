@@ -48,12 +48,12 @@ export function Logo({ logoUrl }: { logoUrl: string | null }) {
 
   return (
     <div className="flex items-center gap-4">
-      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white">
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={logoUrl} alt="Logo atual" className="h-full w-full object-contain" />
         ) : (
-          <span className="text-xs text-gray-400">sem logo</span>
+          <span className="text-sm text-gray-400">sem logo</span>
         )}
       </div>
 
@@ -77,7 +77,7 @@ export function Logo({ logoUrl }: { logoUrl: string | null }) {
           <button
             type="button"
             onClick={() => iniciar(() => removerLogo())}
-            className={`${estiloBotaoPerigo} py-2 text-sm`}
+            className={estiloBotaoPerigo}
           >
             Remover logo
           </button>

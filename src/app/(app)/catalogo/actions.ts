@@ -27,10 +27,10 @@ export async function salvarItem(
     valores: { descricao, unidade, precoTexto },
   });
 
-  if (!descricao) return falhar("A descrição é obrigatória.");
+  if (!descricao) return falhar("Escreva o nome do produto ou serviço.");
   if (descricao.length > 200) return falhar("Descrição muito longa (máximo 200 caracteres).");
   if (unidade.length > 20) return falhar("Unidade muito longa.");
-  if (preco === null) return falhar("Preço inválido. Use o formato 12,50.");
+  if (preco === null) return falhar("O preço está errado. Escreva assim: 12,50");
   if (preco > 100_000_000_00) return falhar("Preço alto demais.");
 
   const dados = { descricao, unidade, preco };
@@ -43,7 +43,7 @@ export async function salvarItem(
   }
 
   revalidatePath("/catalogo");
-  redirect("/catalogo");
+  redirect("/catalogo?ok=item-salvo");
 }
 
 export async function apagarItem(id: string) {
@@ -51,5 +51,5 @@ export async function apagarItem(id: string) {
   // Apagar do catálogo não afeta orçamentos já feitos: eles guardam uma cópia do item.
   await prisma.item.deleteMany({ where: { id, empresaId } });
   revalidatePath("/catalogo");
-  redirect("/catalogo");
+  redirect("/catalogo?ok=item-apagado");
 }

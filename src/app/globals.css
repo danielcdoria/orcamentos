@@ -1,25 +1,30 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================================================
+   IDENTIDADE VISUAL
+   Sóbrio e confiável, como aplicativo de banco.
+   - Uma cor de destaque só (azul escuro "marca"): botão principal e valores totais.
+   - Verde, amarelo e vermelho só para status, em tom suave.
+   - Fonte do próprio celular/computador, texto de 16px no mínimo.
+   ============================================================================ */
+@theme {
+  --color-marca: #1e3a8a;
+  --color-marca-escura: #172554;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
 }
-
-/* Modo escuro desligado por enquanto; o visual será cuidado na semana 4. */
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: #f9fafb; /* cinza bem claro */
+  color: #111827; /* quase preto */
 }
 
-/* Impressão / PDF */
+/* Impressão (Cmd+P): o PDF oficial é o do botão "Baixar PDF"; isto só deixa a
+   impressão da página limpa caso alguém imprima direto do navegador. */
 @media print {
   @page {
     size: A4;
@@ -29,8 +34,6 @@ body {
   body {
     background: white;
   }
-  /* Por padrão, navegadores não imprimem cores de fundo (para economizar tinta).
-     Isto força a impressão do fundo escuro do "Total" e das demais cores. */
   * {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { FormCliente } from "../form-cliente";
+import { estiloTitulo } from "@/components/estilos";
 
 // [id] entre colchetes = parte variável do endereço. /clientes/abc123 -> id = "abc123"
 export default async function EditarCliente(props: PageProps<"/clientes/[id]">) {
@@ -17,7 +18,7 @@ export default async function EditarCliente(props: PageProps<"/clientes/[id]">) 
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold">Editar cliente</h1>
+      <h1 className={estiloTitulo}>Editar cliente</h1>
       <FormCliente cliente={cliente} />
     </div>
   );

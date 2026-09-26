@@ -1,16 +1,5 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Orçamentos",
@@ -21,13 +10,14 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false, email: false, address: false },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#ffffff",
+};
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="pt-BR"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+    <html lang="pt-BR" className="h-full antialiased">
+      <body className="flex min-h-full flex-col font-sans text-base">{children}</body>
     </html>
   );
 }

@@ -29,7 +29,7 @@ export async function salvarOrcamento(dados: DadosOrcamento): Promise<EstadoOrca
     where: { id: dados.clienteId, empresaId },
     select: { id: true },
   });
-  if (!cliente) return { erro: "Escolha um cliente." };
+  if (!cliente) return { erro: "Escolha o cliente." };
 
   if (!Array.isArray(dados.linhas) || dados.linhas.length === 0) {
     return { erro: "Adicione pelo menos um item." };
@@ -45,12 +45,12 @@ export async function salvarOrcamento(dados: DadosOrcamento): Promise<EstadoOrca
     const quantidade = lerQuantidade(String(linha.quantidade ?? ""));
     const preco = linha.precoUnitario;
 
-    if (!descricao || descricao.length > 200) return { erro: `Item ${i + 1}: descrição inválida.` };
+    if (!descricao || descricao.length > 200) return { erro: `Item ${i + 1}: confira o nome do item.` };
     if (quantidade === null || quantidade > 1_000_000) {
-      return { erro: `Item ${i + 1} (${descricao}): quantidade inválida.` };
+      return { erro: `Item ${i + 1} (${descricao}): a quantidade está errada.` };
     }
     if (!Number.isInteger(preco) || preco < 0 || preco > 100_000_000_00) {
-      return { erro: `Item ${i + 1} (${descricao}): preço inválido.` };
+      return { erro: `Item ${i + 1} (${descricao}): o preço está errado.` };
     }
 
     linhas.push({
@@ -105,7 +105,7 @@ export async function salvarOrcamento(dados: DadosOrcamento): Promise<EstadoOrca
   }
 
   revalidatePath("/orcamentos");
-  redirect(`/orcamentos/${orcamentoId}`); // abre o orçamento recém-criado
+  redirect(`/orcamentos/${orcamentoId}?ok=orcamento-criado`); // abre o orçamento recém-criado
 }
 
 // Chamado quando a pessoa toca em "Enviar no WhatsApp".

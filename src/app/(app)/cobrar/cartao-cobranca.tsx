@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { MessageCircle } from "lucide-react";
 import { marcarRespondido, registrarCobranca } from "./actions";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { telefoneParaWhatsApp } from "@/lib/telefone";
 import type { ItemFila } from "@/lib/cobranca";
-import { estiloBotaoSecundario, estiloBotaoWhatsApp, estiloCampo } from "@/components/estilos";
+import { estiloBotao, estiloBotaoSecundario, estiloCampo, estiloCartao } from "@/components/estilos";
 
 function textoDias(dias: number) {
   return dias === 1 ? "há 1 dia" : `há ${dias} dias`;
@@ -23,77 +24,77 @@ export function CartaoCobranca({ item }: { item: ItemFila }) {
 
   if (concluido) {
     return (
-      <li className="rounded-xl border border-green-200 bg-green-50 px-5 py-4 text-sm text-green-800">
+      <li className="rounded-2xl bg-green-50 px-5 py-4 text-base text-green-800">
         {item.cliente}: {concluido === "enviado" ? "cobrança enviada ✓" : "marcado como respondido ✓"}
       </li>
     );
   }
 
   return (
-    <li className="flex flex-col gap-3 rounded-xl border border-gray-200 p-5">
+    <li className={`${estiloCartao} flex flex-col gap-4 p-4`}>
       {/* Quem, quanto e a situação */}
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="truncate text-lg font-semibold">{item.cliente}</p>
-          <p className="mt-0.5 text-sm text-gray-600">
+          <p className="truncate text-xl font-bold">{item.cliente}</p>
+          <p className="mt-1 text-base text-gray-600">
             Enviado {textoDias(item.dias)} ·{" "}
-            <Link href={`/orcamentos/${item.orcamentoId}`} className="underline">
+            <Link href={`/orcamentos/${item.orcamentoId}`} className="underline underline-offset-2">
               nº {item.numero}
             </Link>
           </p>
         </div>
-        <p className="shrink-0 text-lg font-bold">{formatarCentavos(item.total)}</p>
+        <p className="shrink-0 text-xl font-bold text-marca">{formatarCentavos(item.total)}</p>
       </div>
 
-      <div className="flex flex-wrap gap-2 text-xs font-semibold">
+      <div className="flex flex-wrap gap-2 text-sm font-medium">
         {item.abriu ? (
-          <span className="rounded-full bg-green-700 px-2 py-0.5 text-white">Abriu o link</span>
+          <span className="rounded-full bg-green-50 px-3 py-1 text-green-800">Viu o orçamento</span>
         ) : (
-          <span className="rounded-full border border-gray-300 px-2 py-0.5 text-gray-600">Não abriu</span>
+          <span className="rounded-full px-3 py-1 text-gray-700 ring-1 ring-gray-300">Ainda não viu</span>
         )}
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-900">
-          {item.etapa}ª cobrança
-        </span>
+        <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900">{item.etapa}ª cobrança</span>
       </div>
 
       {/* Mensagem pronta, editável */}
-      <textarea
-        aria-label={`Mensagem para ${item.cliente}`}
-        rows={4}
-        value={mensagem}
-        onChange={(e) => setMensagem(e.target.value)}
-        className={`${estiloCampo} text-sm`}
-      />
+      <label className="flex flex-col gap-2">
+        <span className="text-base text-gray-700">Mensagem (pode mudar antes de enviar):</span>
+        <textarea
+          rows={5}
+          value={mensagem}
+          onChange={(e) => setMensagem(e.target.value)}
+          className={estiloCampo}
+        />
+      </label>
 
-      <div className="grid grid-cols-2 gap-3">
-        {/* Link normal (abre o WhatsApp sem ser bloqueado); o onClick registra a cobrança. */}
-        <a
-          href={urlWhatsApp}
-          target="_blank"
-          rel="noopener"
-          onClick={() => {
-            setConcluido("enviado");
-            iniciar(() => registrarCobranca(item.orcamentoId, item.etapa, mensagem));
-          }}
-          className={`${estiloBotaoWhatsApp} flex items-center justify-center`}
-        >
-          Enviar no WhatsApp
-        </a>
-        <button
-          type="button"
-          onClick={() => {
-            setConcluido("respondido");
-            iniciar(() => marcarRespondido(item.orcamentoId));
-          }}
-          className={estiloBotaoSecundario}
-        >
-          Já respondeu
-        </button>
-      </div>
+      {/* Link normal (abre o WhatsApp sem ser bloqueado); o onClick registra a cobrança. */}
+      <a
+        href={urlWhatsApp}
+        target="_blank"
+        rel="noopener"
+        onClick={() => {
+          setConcluido("enviado");
+          iniciar(() => registrarCobranca(item.orcamentoId, item.etapa, mensagem));
+        }}
+        className={`${estiloBotao} w-full text-lg`}
+      >
+        <MessageCircle className="size-5" aria-hidden />
+        Enviar no WhatsApp
+      </a>
+      <button
+        type="button"
+        onClick={() => {
+          setConcluido("respondido");
+          iniciar(() => marcarRespondido(item.orcamentoId));
+        }}
+        className={`${estiloBotaoSecundario} w-full`}
+      >
+        O cliente já respondeu
+      </button>
 
       {!telefone && (
-        <p className="text-xs text-gray-500">
-          Cliente sem telefone completo (com DDD): o WhatsApp vai pedir para você escolher o contato.
+        <p className="text-base text-gray-600">
+          Este cliente está sem telefone completo (com DDD). O WhatsApp vai pedir para você escolher o
+          contato.
         </p>
       )}
     </li>

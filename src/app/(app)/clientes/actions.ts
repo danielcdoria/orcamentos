@@ -19,8 +19,11 @@ function lerCampos(formData: FormData) {
 }
 
 // id = null cria um cliente novo; id preenchido edita um existente.
+// voltar = "orcamento" quando o cadastro começou na tela de novo orçamento: depois de
+// salvar, volta para lá com o cliente já escolhido.
 export async function salvarCliente(
   id: string | null,
+  voltar: string | null,
   _estado: EstadoForm,
   formData: FormData,
 ): Promise<EstadoForm> {
@@ -31,7 +34,7 @@ export async function salvarCliente(
     valores: { nome: dados.nome, telefone: dados.telefone ?? "", observacao: dados.observacao ?? "" },
   });
 
-  if (!dados.nome) return falhar("O nome é obrigatório.");
+  if (!dados.nome) return falhar("Escreva o nome do cliente.");
   if (dados.nome.length > 120) return falhar("Nome muito longo (máximo 120 caracteres).");
   if ((dados.observacao?.length ?? 0) > 1000) return falhar("Observação muito longa.");
 
@@ -42,10 +45,12 @@ export async function salvarCliente(
       data: dados,
     });
     if (count === 0) return falhar("Cliente não encontrado.");
-  } else {
-    await prisma.cliente.create({ data: { ...dados, empresaId } });
+    revalidatePath("/clientes");
+    redirect("/clientes?ok=cliente-salvo");
   }
 
+  const novo = await prisma.cliente.create({ data: { ...dados, empresaId } });
   revalidatePath("/clientes");
-  redirect("/clientes");
+  if (voltar === "orcamento") redirect(`/orcamentos/novo?cliente=${novo.id}`);
+  redirect("/clientes?ok=cliente-salvo");
 }

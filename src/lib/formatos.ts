@@ -7,9 +7,7 @@ const data = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
 });
 
-const dataHora = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
+const hora = new Intl.DateTimeFormat("pt-BR", {
   hour: "2-digit",
   minute: "2-digit",
   timeZone: "America/Sao_Paulo",
@@ -31,9 +29,9 @@ export function formatarDataCurta(d: Date): string {
   return dataCurta.format(d);
 }
 
-// 25/09, 14:30
+// 25/09/2026 às 14:30
 export function formatarDataHora(d: Date): string {
-  return dataHora.format(d);
+  return `${data.format(d)} às ${hora.format(d)}`;
 }
 
 // Decimal do banco (2.500) -> "2,5"

@@ -8,6 +8,7 @@ import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData, formatarQuantidade } from "@/lib/formatos";
 import { urlBase } from "@/lib/url";
 import { formatarTelefone, telefoneParaWhatsApp } from "@/lib/telefone";
+import { MessageCircle, Phone } from "lucide-react";
 import { BotaoPdf } from "./botao-pdf";
 
 // PÁGINA PÚBLICA do orçamento: /orcamento/<token>
@@ -69,91 +70,120 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
 
   const vencido = o.validoAte < new Date();
 
+  // Botão para o cliente responder a empresa, só se o telefone da empresa for celular
+  // (55 + DDD + 9 dígitos começando com 9). Fixo pode não ter WhatsApp.
+  const whatsEmpresa = telefoneParaWhatsApp(o.empresa.telefone);
+  const empresaTemCelular = whatsEmpresa !== null && /^55\d{2}9\d{8}$/.test(whatsEmpresa);
+  const textoResposta = `Olá! Vi o orçamento nº ${o.numero} (${formatarCentavos(o.total)}).`;
+
   return (
-    // As classes "print:" só valem na impressão/PDF: tiram o fundo cinza, a sombra e as margens.
     <main className="min-h-dvh bg-gray-100 px-3 py-4 sm:px-6 sm:py-10 print:min-h-0 print:bg-white print:p-0">
-      <article className="mx-auto max-w-2xl overflow-hidden rounded-2xl bg-white shadow-sm print:max-w-none print:rounded-none print:shadow-none">
+      <article className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-gray-200 bg-white print:max-w-none print:rounded-none print:border-0">
         {/* Empresa */}
-        <header className="flex items-center gap-4 border-b border-gray-100 px-5 py-6 sm:px-8">
+        <header className="flex items-center gap-4 px-5 py-5 sm:px-8 sm:py-6">
           {o.empresa.logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={o.empresa.logoUrl}
               alt={`Logo ${o.empresa.nome}`}
-              className="h-14 w-14 shrink-0 rounded-lg object-contain"
+              className="size-16 shrink-0 rounded-xl object-contain"
             />
           )}
           <div className="min-w-0">
-            <p className="text-lg font-bold leading-tight">{o.empresa.nome}</p>
+            <p className="text-xl leading-tight font-bold">{o.empresa.nome}</p>
             {o.empresa.telefone && (
               // Link de ligação: o cliente toca no número e liga para a empresa.
               <a
                 href={linkLigacao(o.empresa.telefone)}
-                className="text-sm text-gray-600 underline decoration-gray-300 underline-offset-2"
+                className="mt-1 inline-flex min-h-8 items-center gap-1.5 text-base text-gray-600"
               >
+                <Phone className="size-4" aria-hidden />
                 {formatarTelefone(o.empresa.telefone)}
               </a>
             )}
           </div>
         </header>
 
-        {/* Cabeçalho do orçamento */}
-        <section className="px-5 pt-6 sm:px-8">
-          <p className="text-xs font-semibold tracking-widest text-gray-500 uppercase">Orçamento</p>
-          <h1 className="text-3xl font-bold">Nº {o.numero}</h1>
-
-          <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
+        {/* Faixa do documento: número, data e validade */}
+        <section className="border-y border-gray-200 bg-gray-50 px-5 py-4 sm:px-8">
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
             <div>
-              <dt className="text-gray-500">Data</dt>
-              <dd className="font-medium">{formatarData(o.criadoEm)}</dd>
+              <p className="text-sm font-semibold tracking-widest text-gray-500 uppercase">Orçamento</p>
+              <h1 className="text-3xl font-bold">Nº {o.numero}</h1>
             </div>
-            <div>
-              <dt className="text-gray-500">Válido até</dt>
-              <dd className={`font-medium ${vencido ? "text-red-700" : ""}`}>
-                {formatarData(o.validoAte)}
-                {vencido && " (vencido)"}
-              </dd>
-            </div>
-            <div className="col-span-2">
-              <dt className="text-gray-500">Cliente</dt>
-              <dd className="font-medium">
-                {o.cliente.nome}
-                {o.cliente.telefone && (
-                  <span className="font-normal text-gray-600"> · {formatarTelefone(o.cliente.telefone)}</span>
-                )}
-              </dd>
-            </div>
-          </dl>
+            <dl className="flex gap-6 text-base">
+              <div>
+                <dt className="text-sm text-gray-500">Data</dt>
+                <dd className="font-semibold">{formatarData(o.criadoEm)}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-gray-500">Válido até</dt>
+                <dd className={`font-semibold ${vencido ? "text-red-700" : ""}`}>
+                  {formatarData(o.validoAte)}
+                </dd>
+              </div>
+            </dl>
+          </div>
+          {vencido && (
+            <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-base text-red-800">
+              Este orçamento venceu. Fale com {o.empresa.nome} para confirmar os valores.
+            </p>
+          )}
         </section>
 
-        {/* Itens */}
-        <section className="px-5 pt-8 sm:px-8">
-          <h2 className="border-b border-gray-200 pb-2 text-xs font-semibold tracking-widest text-gray-500 uppercase">
-            Itens
-          </h2>
-          <ul className="divide-y divide-gray-100">
+        {/* Cliente */}
+        <section className="px-5 pt-5 sm:px-8">
+          <p className="text-sm text-gray-500">Para</p>
+          <p className="text-lg font-semibold">{o.cliente.nome}</p>
+          {o.cliente.telefone && <p className="text-base text-gray-600">{formatarTelefone(o.cliente.telefone)}</p>}
+        </section>
+
+        {/* Itens: no celular, cada item em duas linhas; a partir de 640px, tabela */}
+        <section className="px-5 pt-6 sm:px-8">
+          <h2 className="sr-only">Itens</h2>
+          <ul className="divide-y divide-gray-200 border-y border-gray-200 sm:hidden">
             {o.itens.map((item) => (
-              <li key={item.id} className="flex items-start justify-between gap-4 py-4 break-inside-avoid">
+              <li key={item.id} className="flex items-start justify-between gap-4 py-3 break-inside-avoid">
                 <div className="min-w-0">
-                  <p className="font-medium">{item.descricao}</p>
-                  <p className="mt-0.5 text-sm text-gray-600">
+                  <p className="text-base font-medium">{item.descricao}</p>
+                  <p className="text-base text-gray-600">
                     {formatarQuantidade(item.quantidade)} × {formatarCentavos(item.precoUnitario)}
                   </p>
                 </div>
-                <p className="shrink-0 font-medium tabular-nums">{formatarCentavos(item.subtotal)}</p>
+                <p className="shrink-0 text-base font-semibold tabular-nums">{formatarCentavos(item.subtotal)}</p>
               </li>
             ))}
           </ul>
+          <table className="hidden w-full text-base sm:table">
+            <thead>
+              <tr className="border-b border-gray-300 text-left text-sm text-gray-500">
+                <th className="py-2 font-medium">Descrição</th>
+                <th className="py-2 text-right font-medium">Qtd</th>
+                <th className="py-2 text-right font-medium">Valor unit.</th>
+                <th className="py-2 text-right font-medium">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {o.itens.map((item) => (
+                <tr key={item.id} className="break-inside-avoid">
+                  <td className="py-3 pr-4">{item.descricao}</td>
+                  <td className="py-3 text-right tabular-nums">{formatarQuantidade(item.quantidade)}</td>
+                  <td className="py-3 pl-4 text-right tabular-nums">{formatarCentavos(item.precoUnitario)}</td>
+                  <td className="py-3 pl-4 text-right font-semibold tabular-nums">{formatarCentavos(item.subtotal)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </section>
 
         {/* Total */}
-        <section className="mx-5 mt-2 flex items-center justify-between rounded-xl bg-gray-900 px-5 py-5 text-white break-inside-avoid sm:mx-8">
-          <span className="font-medium">Total</span>
-          <span className="text-2xl font-bold tabular-nums">{formatarCentavos(o.total)}</span>
+        <section className="mx-5 mt-5 flex items-center justify-between rounded-xl bg-marca px-5 py-5 text-white break-inside-avoid sm:mx-8 sm:ml-auto sm:max-w-xs">
+          <span className="text-lg font-medium">Total</span>
+          <span className="text-3xl font-extrabold tabular-nums">{formatarCentavos(o.total)}</span>
         </section>
 
         {/* Condições */}
-        <section className="flex flex-col gap-4 px-5 py-8 text-sm sm:px-8">
+        <section className="flex flex-col gap-4 px-5 py-6 text-base sm:px-8">
           {o.empresa.condicaoPagamento && (
             <div>
               <h2 className="font-semibold">Condição de pagamento</h2>
@@ -162,9 +192,7 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
           )}
           <div>
             <h2 className="font-semibold">Validade</h2>
-            <p className="mt-1 text-gray-700">
-              Este orçamento é válido até {formatarData(o.validoAte)}.
-            </p>
+            <p className="mt-1 text-gray-700">Este orçamento é válido até {formatarData(o.validoAte)}.</p>
           </div>
           {o.observacao && (
             <div>
@@ -175,8 +203,17 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
         </section>
       </article>
 
-      {/* Fora do <article>: não faz parte do orçamento e some na impressão */}
-      <div className="mx-auto mt-4 max-w-2xl print:hidden">
+      {/* Fora do documento: ações do cliente (somem na impressão) */}
+      <div className="mx-auto mt-4 flex max-w-2xl flex-col gap-3 print:hidden">
+        {empresaTemCelular && (
+          <a
+            href={`https://wa.me/${whatsEmpresa}?text=${encodeURIComponent(textoResposta)}`}
+            className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-marca px-4 py-3 text-lg font-semibold text-white"
+          >
+            <MessageCircle className="size-5" aria-hidden />
+            Responder no WhatsApp
+          </a>
+        )}
         <BotaoPdf token={token} />
       </div>
     </main>
