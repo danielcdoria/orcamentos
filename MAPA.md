@@ -43,7 +43,7 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 | `src/lib/telefone.ts` | `telefoneParaWhatsApp` (limpa o número e põe o 55 do Brasil: "(21) 99999-8888" → "5521999998888") e `formatarTelefone` (mostra como "(21) 99999-8888"). |
 | `src/lib/mensagem.ts` | Monta a mensagem de envio trocando `{cliente}`, `{link}`, `{numero}`, `{total}` e `{empresa}` pelos dados reais. |
 | `src/lib/formatos.ts` | Datas (`formatarData`, `formatarDataHora`, no fuso de Brasília) e `formatarQuantidade`. |
-| `src/lib/url.ts` | `urlBase()`: descobre o endereço do site (localhost ou Vercel) para montar links completos. |
+| `src/lib/url.ts` | `urlBase()`: descobre o endereço do site (Vercel em produção) para montar links completos. No `npm run dev`, troca `localhost` pelo IP do Mac na rede, para o link abrir no celular. |
 | `src/lib/dinheiro.ts` | Funções de dinheiro: `formatarCentavos` (1250 → "R$ 12,50"), `lerReais` ("12,50" → 1250) e `calcularSubtotal` (quantidade × preço, arredondado) `centavosParaTexto` (1250 → "12,50", para preencher campos), `lerQuantidade` ("2,5" → 2.5) e `quantidadeParaTexto`. |
 
 ## Componentes (`src/components/`)
