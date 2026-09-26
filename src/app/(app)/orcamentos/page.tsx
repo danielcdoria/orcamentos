@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData } from "@/lib/formatos";
 import { estiloBotao } from "@/components/estilos";
+import { SeletorStatus } from "@/components/seletor-status";
 
 // "Visto" em verde forte quando o cliente já abriu; "Não visto" em cinza quando não.
 function SeloAbertura({ abertoEm, vezes }: { abertoEm: Date | null; vezes: number }) {
@@ -20,8 +21,6 @@ function SeloAbertura({ abertoEm, vezes }: { abertoEm: Date | null; vezes: numbe
     </span>
   );
 }
-
-const rotuloStatus = { rascunho: "Rascunho", enviado: "Enviado" } as const;
 
 export default async function PaginaOrcamentos() {
   const { empresaId } = await exigirSessao();
@@ -56,22 +55,23 @@ export default async function PaginaOrcamentos() {
       ) : (
         <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
           {orcamentos.map((o) => (
-            <li key={o.id}>
-              <Link
-                href={`/orcamentos/${o.id}`}
-                className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-gray-50"
-              >
-              <div className="min-w-0">
-                <span className="flex items-center gap-2">
-                  <span className="truncate font-medium">{o.cliente.nome}</span>
-                  <SeloAbertura abertoEm={o.abertoEm} vezes={o.vezesAberto} />
-                </span>
-                <span className="mt-0.5 block text-sm text-gray-600">
-                  Nº {o.numero} · {formatarData(o.criadoEm)} · {rotuloStatus[o.status]}
-                </span>
-              </div>
-              <span className="shrink-0 font-semibold">{formatarCentavos(o.total)}</span>
+            <li key={o.id} className="flex flex-col gap-2 px-5 py-4 hover:bg-gray-50">
+              <Link href={`/orcamentos/${o.id}`} className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate font-medium">{o.cliente.nome}</span>
+                    <SeloAbertura abertoEm={o.abertoEm} vezes={o.vezesAberto} />
+                  </span>
+                  <span className="mt-0.5 block text-sm text-gray-600">
+                    Nº {o.numero} · {formatarData(o.criadoEm)}
+                  </span>
+                </div>
+                <span className="shrink-0 font-semibold">{formatarCentavos(o.total)}</span>
               </Link>
+              {/* Fora do link: mudar o status aqui não abre o orçamento */}
+              <div>
+                <SeletorStatus id={o.id} status={o.status} />
+              </div>
             </li>
           ))}
         </ul>

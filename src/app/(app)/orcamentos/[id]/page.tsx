@@ -8,9 +8,8 @@ import { urlBase } from "@/lib/url";
 import { montarMensagem } from "@/lib/mensagem";
 import { telefoneParaWhatsApp } from "@/lib/telefone";
 import { BotoesEnvio } from "./botoes-envio";
+import { SeletorStatus } from "@/components/seletor-status";
 import { estiloBotaoSecundario } from "@/components/estilos";
-
-const rotuloStatus = { rascunho: "Rascunho", enviado: "Enviado" } as const;
 
 // Tela INTERNA de um orçamento (exige login). Daqui se abre a página pública.
 export default async function DetalheOrcamento(props: PageProps<"/orcamentos/[id]">) {
@@ -49,8 +48,11 @@ export default async function DetalheOrcamento(props: PageProps<"/orcamentos/[id
         </Link>
         <h1 className="mt-2 text-2xl font-bold">Orçamento nº {o.numero}</h1>
         <p className="mt-1 text-gray-600">
-          {o.cliente.nome} · {formatarData(o.criadoEm)} · {rotuloStatus[o.status]}
+          {o.cliente.nome} · {formatarData(o.criadoEm)}
         </p>
+        <div className="mt-3">
+          <SeletorStatus id={o.id} status={o.status} />
+        </div>
       </div>
 
       {o.enviadoEm && (

@@ -104,9 +104,19 @@ model Item {
   @@index([empresaId, descricao])
 }
 
+// rascunho   -> criado, ainda não mandado
+// enviado    -> mandado pelo WhatsApp
+// aberto     -> o cliente abriu o link (automático)
+// respondido -> o cliente respondeu (marcado à mão)
+// fechado    -> virou venda (marcado à mão)
+// perdido    -> não virou venda (à mão, ou automático após o prazo de cobrança)
 enum StatusOrcamento {
   rascunho
   enviado
+  aberto
+  respondido
+  fechado
+  perdido
 }
 
 model Orcamento {
@@ -119,7 +129,7 @@ model Orcamento {
   validoAte  DateTime
   status     StatusOrcamento @default(rascunho)
   criadoEm   DateTime        @default(now())
-  enviadoEm  DateTime? // último envio pelo botão do WhatsApp
+  enviadoEm  DateTime? // PRIMEIRO envio; é daqui que a regra de cobrança conta os dias
 
   // Código secreto do link público (/orcamento/<token>). O próprio banco sorteia
   // 64 caracteres aleatórios; é impossível adivinhar o link de outro orçamento.

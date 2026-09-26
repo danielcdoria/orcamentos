@@ -56,5 +56,17 @@ export async function registrarAbertura(orcamentoId: string) {
       where: { id: orcamentoId, abertoEm: null },
       data: { abertoEm: agora },
     }),
+    // 4. se ainda era rascunho, o link foi mandado por outro caminho (ex.: "Copiar link"):
+    //    consideramos enviado agora, para entrar na regra de cobrança
+    prisma.orcamento.updateMany({
+      where: { id: orcamentoId, status: "rascunho", enviadoEm: null },
+      data: { enviadoEm: agora },
+    }),
+    // 5. status "aberto" automático (só a partir de rascunho/enviado; nunca desfaz
+    //    respondido, fechado ou perdido)
+    prisma.orcamento.updateMany({
+      where: { id: orcamentoId, status: { in: ["rascunho", "enviado"] } },
+      data: { status: "aberto" },
+    }),
   ]);
 }

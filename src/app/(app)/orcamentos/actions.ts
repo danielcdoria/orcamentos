@@ -6,6 +6,8 @@ import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { calcularSubtotal, lerQuantidade } from "@/lib/dinheiro";
+import { LISTA_STATUS } from "@/lib/status";
+import type { StatusOrcamento } from "@/generated/prisma/enums";
 
 // O que o formulário manda. Repare que NÃO vem subtotal nem total:
 // o servidor recalcula tudo, porque qualquer valor vindo do navegador pode ser adulterado.
@@ -107,13 +109,29 @@ export async function salvarOrcamento(dados: DadosOrcamento): Promise<EstadoOrca
 }
 
 // Chamado quando a pessoa toca em "Enviar no WhatsApp".
-// Marca como enviado e guarda a hora do envio (se reenviar, fica a hora do último envio).
+// Guarda a data do PRIMEIRO envio (a cobrança conta os dias a partir dela; reenviar não zera)
+// e muda de rascunho para enviado (sem "rebaixar" quem já está aberto, respondido etc.).
 export async function marcarEnviado(orcamentoId: string) {
   const { empresaId } = await exigirSessao();
-  await prisma.orcamento.updateMany({
-    where: { id: orcamentoId, empresaId },
-    data: { status: "enviado", enviadoEm: new Date() },
-  });
+  await prisma.$transaction([
+    prisma.orcamento.updateMany({
+      where: { id: orcamentoId, empresaId, enviadoEm: null },
+      data: { enviadoEm: new Date() },
+    }),
+    prisma.orcamento.updateMany({
+      where: { id: orcamentoId, empresaId, status: "rascunho" },
+      data: { status: "enviado" },
+    }),
+  ]);
+  revalidatePath("/orcamentos");
+  revalidatePath(`/orcamentos/${orcamentoId}`);
+}
+
+// Troca manual de status (botões rápidos da lista e da tela do orçamento).
+export async function alterarStatus(orcamentoId: string, status: StatusOrcamento) {
+  const { empresaId } = await exigirSessao();
+  if (!LISTA_STATUS.includes(status)) return; // valor inventado: ignora
+  await prisma.orcamento.updateMany({ where: { id: orcamentoId, empresaId }, data: { status } });
   revalidatePath("/orcamentos");
   revalidatePath(`/orcamentos/${orcamentoId}`);
 }
