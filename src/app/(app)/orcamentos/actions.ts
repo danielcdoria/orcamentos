@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
-import { calcularSubtotal, lerQuantidade } from "@/lib/dinheiro";
+import { calcularSubtotal, lerQuantidade, VALOR_MAXIMO } from "@/lib/dinheiro";
 import { LISTA_STATUS } from "@/lib/status";
 import type { StatusOrcamento } from "@/generated/prisma/enums";
 
@@ -49,8 +49,12 @@ export async function salvarOrcamento(dados: DadosOrcamento): Promise<EstadoOrca
     if (quantidade === null || quantidade > 1_000_000) {
       return { erro: `Item ${i + 1} (${descricao}): a quantidade está errada.` };
     }
-    if (!Number.isInteger(preco) || preco < 0 || preco > 100_000_000_00) {
+    if (!Number.isInteger(preco) || preco < 0) {
       return { erro: `Item ${i + 1} (${descricao}): o preço está errado.` };
+    }
+    const subtotal = calcularSubtotal(quantidade, preco);
+    if (preco > VALOR_MAXIMO || subtotal > VALOR_MAXIMO) {
+      return { erro: `Item ${i + 1} (${descricao}): valor alto demais. O máximo é R$ 20.000.000,00.` };
     }
 
     linhas.push({
@@ -58,11 +62,12 @@ export async function salvarOrcamento(dados: DadosOrcamento): Promise<EstadoOrca
       descricao,
       quantidade: String(quantidade), // Decimal: passamos como texto para não perder precisão
       precoUnitario: preco,
-      subtotal: calcularSubtotal(quantidade, preco),
+      subtotal,
     });
   }
 
   const total = linhas.reduce((soma, l) => soma + l.subtotal, 0);
+  if (total > VALOR_MAXIMO) return { erro: "O total passou de R$ 20.000.000,00, o máximo aceito." };
 
   const empresa = await prisma.empresa.findUniqueOrThrow({
     where: { id: empresaId },

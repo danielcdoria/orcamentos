@@ -177,7 +177,7 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
         </section>
 
         {/* Total */}
-        <section className="mx-5 mt-5 flex items-center justify-between rounded-xl bg-marca px-5 py-5 text-white break-inside-avoid sm:mx-8 sm:ml-auto sm:max-w-xs">
+        <section className="mx-5 mt-5 flex flex-wrap items-center justify-between gap-x-8 gap-y-1 rounded-xl bg-marca px-6 py-5 text-white break-inside-avoid sm:mx-8 sm:ml-auto sm:w-fit sm:min-w-80">
           <span className="text-lg font-medium">Total</span>
           <span className="text-3xl font-extrabold tabular-nums">{formatarCentavos(o.total)}</span>
         </section>

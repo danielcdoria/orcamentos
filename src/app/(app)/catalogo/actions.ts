@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { lerReais } from "@/lib/dinheiro";
+import { lerReais, VALOR_MAXIMO } from "@/lib/dinheiro";
 
 // Em caso de erro, devolvemos também o que foi digitado ("valores"), porque o React
 // limpa o formulário depois de enviar. Assim a pessoa não precisa digitar tudo de novo.
@@ -31,7 +31,7 @@ export async function salvarItem(
   if (descricao.length > 200) return falhar("Descrição muito longa (máximo 200 caracteres).");
   if (unidade.length > 20) return falhar("Unidade muito longa.");
   if (preco === null) return falhar("O preço está errado. Escreva assim: 12,50");
-  if (preco > 100_000_000_00) return falhar("Preço alto demais.");
+  if (preco > VALOR_MAXIMO) return falhar("Preço alto demais. O máximo é R$ 20.000.000,00.");
 
   const dados = { descricao, unidade, preco };
 

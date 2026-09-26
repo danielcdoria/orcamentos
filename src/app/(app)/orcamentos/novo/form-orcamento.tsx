@@ -227,7 +227,7 @@ export function FormOrcamento({
       )}
 
       {/* Total */}
-      <div className={`${estiloCartao} flex items-center justify-between px-5 py-5`}>
+      <div className={`${estiloCartao} flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-5 py-5`}>
         <span className="text-lg font-medium">Total</span>
         <span className="text-3xl font-extrabold text-marca tabular-nums">{formatarCentavos(total)}</span>
       </div>

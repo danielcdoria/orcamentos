@@ -57,7 +57,7 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 | `src/lib/mensagem.ts` | Monta mensagens trocando `{nome}` (primeiro nome), `{cliente}` (nome completo), `{empresa}`, `{valor}`, `{link}`, `{validade}` e `{numero}` pelos dados reais (`{total}` ainda funciona como sinônimo de `{valor}`). |
 | `src/lib/formatos.ts` | Datas (`formatarData`, `formatarDataCurta`, `formatarDataHora`, no fuso de Brasília) e `formatarQuantidade`. |
 | `src/lib/url.ts` | `urlBase()`: descobre o endereço do site (Vercel em produção) para montar links completos. No `npm run dev`, troca `localhost` pelo IP do Mac na rede, para o link abrir no celular. |
-| `src/lib/dinheiro.ts` | Funções de dinheiro: `formatarCentavos` (1250 → "R$ 12,50"), `lerReais` ("12,50" → 1250) e `calcularSubtotal` (quantidade × preço, arredondado) `centavosParaTexto` (1250 → "12,50", para preencher campos), `lerQuantidade` ("2,5" → 2.5) e `quantidadeParaTexto`. |
+| `src/lib/dinheiro.ts` | Funções de dinheiro: `formatarCentavos` (1250 → "R$ 12,50"), `lerReais` ("12,50" → 1250) e `calcularSubtotal` (quantidade × preço, arredondado) `centavosParaTexto` (1250 → "12,50", para preencher campos), `lerQuantidade` ("2,5" → 2.5), `quantidadeParaTexto` e `VALOR_MAXIMO` (R$ 20 milhões: o banco guarda centavos num inteiro que vai até ~R$ 21,4 milhões). |
 
 ## Componentes (`src/components/`)
 
