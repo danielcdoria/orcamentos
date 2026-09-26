@@ -1,136 +1,366 @@
 # Mapa do projeto
 
-O que cada arquivo e pasta faz. Atualizado a cada parte construída.
-Se algo der problema, procure aqui qual arquivo cuida daquilo.
+Guia para quem volta a este código depois de um tempo (inclusive você mesmo, daqui a três meses).
+Leia na ordem: primeiro como rodar, depois as regras, depois como os dados andam. A lista de
+arquivos (seção 5) é para consulta.
 
-## Publicação
+**O que é:** um sistema de orçamentos para pequenas empresas (oficinas, gráficas, marcenarias).
+A empresa monta o orçamento, manda o link pelo WhatsApp, vê se o cliente abriu, e o sistema
+diz quem cobrar em cada dia, com a mensagem pronta. **Várias empresas usam o mesmo sistema**,
+cada uma com o seu login, e uma nunca vê os dados da outra.
 
-- **Site no ar:** https://orcamentos-psi-lilac.vercel.app (Vercel, plano Hobby, região São Paulo).
-- **Como atualizar:** todo `git push` para a branch `main` faz a Vercel publicar a versão nova sozinha (1 a 3 minutos). Antes de montar o site, ela aplica as migrations pendentes no banco de produção (`vercel-build`).
-- **Variáveis de ambiente na Vercel:** `DATABASE_URL` e `DIRECT_URL` do banco de **produção** (os mesmos valores do `.env.producao`).
-- **Bancos:** a Neon tem dois branches. `production` = dados reais (site publicado). `dev` = testes (o Mac).
-- **Plano:** o Hobby da Vercel é só para uso não comercial. Ao entrar o primeiro cliente pagante, mudar para o Pro.
+**No ar:** https://orcamentos-psi-lilac.vercel.app
 
-## Configuração do projeto
+---
 
-| Arquivo / pasta | O que faz |
+## 1. Como rodar e publicar
+
+### Comandos do dia a dia (na pasta do projeto)
+
+| Comando | Para que serve |
 |---|---|
-| `package.json` | Lista as bibliotecas usadas e os comandos (`npm run dev`, `npm run build`). Parecido com o `pom.xml` do Maven. O `postinstall` gera o código do Prisma sempre que alguém roda `npm install` (inclusive a Vercel). O `vercel-build` (usado só pela Vercel) aplica as migrations pendentes no banco de produção antes de montar o site. |
-| `package-lock.json` | Registra a versão exata de cada biblioteca instalada. Gerado pelo npm, não se edita à mão. |
-| `node_modules/` | Onde as bibliotecas ficam instaladas. Não vai para o git; `npm install` recria. |
-| `tsconfig.json` | Configuração do TypeScript. |
-| `vercel.json` | Configuração da Vercel: roda o site em São Paulo (`gru1`), perto do banco. |
-| `next.config.ts` | Configuração do Next.js. Libera o acesso pelo IP da rede de casa em desenvolvimento (`allowedDevOrigins`). Envia os cabeçalhos de proteção (anti-moldura/clickjacking, nosniff, referrer) em todas as páginas. Define a raiz do projeto (`turbopack.root`) porque existe um `package-lock.json` vazio em `~/` que confundia o Next. |
-| `postcss.config.mjs` | Liga o Tailwind ao processo de build do CSS. |
-| `eslint.config.mjs` | Regras do ESLint, que aponta erros e más práticas no código (`npm run lint`). |
-| `next-env.d.ts` | Tipos do Next.js para o TypeScript. Gerado automaticamente. |
-| `.gitignore` | O que o git deve ignorar (`node_modules`, `.env`, código gerado). |
-| `.next/` | Arquivos temporários do Next.js. Pode apagar se algo ficar estranho; ele recria. |
-| `AGENTS.md` / `CLAUDE.md` | Instruções para assistentes de IA que mexem no projeto. |
+| `npm run dev` | Liga o sistema no Mac em http://localhost:3000. **É o comando do dia a dia.** Se atualiza sozinho a cada mudança no código. |
+| `npm run lint` | Procura erros e más práticas no código. |
+| `npm run build` | Monta a versão de produção (o mesmo que a Vercel faz). Bom para conferir antes de publicar. |
+| `npx prisma migrate dev --name o-que-mudou` | Depois de mudar `prisma/schema.prisma`: cria e aplica a mudança no banco de **testes**. |
+| `npx prisma studio` | Abre no navegador uma "planilha" do banco de testes, para olhar e mexer nos dados. |
+| `npm run criar-empresa:producao` | **Cadastra um cliente pagante** (empresa + login) no banco real. É o único jeito de criar contas. |
+| `npm run criar-empresa` | O mesmo, no banco de testes. |
+| `npm run demo:producao` / `npm run demo` | Recria a "Oficina Silva" de demonstração (banco real / de testes). Só apaga a Oficina Silva. |
+
+> ⚠️ `npm start` **não** é para o dia a dia: ele roda a última versão empacotada (antiga) e,
+> no Mac, o login não funciona com ele. Use `npm run dev`.
+
+Pré-requisito: Node 24 (instalado via `nvm`) e o arquivo `.env` preenchido (veja `.env.example`).
+
+### Publicar
+
+Todo `git push` para a branch `main` faz a **Vercel** publicar a versão nova sozinha, em cerca
+de 1 minuto. Antes de montar o site, ela aplica no banco real as mudanças de estrutura
+pendentes (script `vercel-build`). Não há nada para fazer à mão.
+
+- Plano da Vercel: **Hobby (grátis), que só permite uso não comercial.** Ao entrar o primeiro
+  cliente pagante, mudar para o **Pro** (US$ 20/mês).
+- Região: São Paulo (`gru1`, em `vercel.json`), perto do banco.
+
+### Os dois bancos (Neon)
+
+| Branch na Neon | Quem usa | Arquivo com o endereço |
+|---|---|---|
+| `production` | **Dados reais.** O site publicado. | Variáveis de ambiente da Vercel e `.env.producao` |
+| `dev` | Testes. O `npm run dev` no Mac. Pode mexer à vontade. | `.env` |
+
+### Variáveis de ambiente (as únicas do projeto)
+
+| Nome | O que é |
+|---|---|
+| `DATABASE_URL` | Endereço do banco **com pooler** (`-pooler` no endereço). O site lê e grava por ele. |
+| `DIRECT_URL` | Endereço **direto** do mesmo banco. Só para aplicar mudanças de estrutura (migrations). |
+
+Os dois contêm a senha do banco: **nunca vão para o git nem para conversas.**
+
+---
+
+## 2. Regras que não podem ser quebradas
+
+1. **O `empresaId` vem sempre do login, nunca do formulário ou do endereço.** Toda página e
+   toda ação começa com `const { empresaId } = await exigirSessao()` (`src/lib/auth.ts`) e toda
+   consulta ao banco filtra por esse `empresaId`. É isso que impede uma empresa de ver os dados
+   de outra. Para buscar um registro por id, use `findFirst({ where: { id, empresaId } })` e
+   `updateMany/deleteMany` com `empresaId` no filtro.
+2. **Toda ação que grava dados (`actions.ts`) chama `exigirSessao()` por conta própria.** O
+   layout protege as páginas, mas uma ação pode ser chamada diretamente, sem passar pela página.
+3. **Dinheiro sempre em centavos, número inteiro.** R$ 12,50 = `1250`. Nunca `Decimal`/`float`
+   para dinheiro. Máximo aceito: R$ 20.000.000,00 (`VALOR_MAXIMO`), porque o banco guarda até
+   ~R$ 21,4 milhões nesse tipo de campo.
+4. **O servidor recalcula tudo.** Subtotais e total de um orçamento são calculados de novo no
+   servidor; nunca confie em valores que vêm do navegador.
+5. **O sistema NUNCA envia mensagem de WhatsApp sozinho**, e não se usa biblioteca não oficial
+   de WhatsApp (elas fazem o número da empresa ser banido). O sistema decide quem cobrar e
+   escreve o texto; quem toca em "Enviar" é a pessoa, pelo link `wa.me`.
+6. **Mudança no banco é sempre pelo Prisma:** edite `prisma/schema.prisma` e rode
+   `npx prisma migrate dev --name ...`. Nunca altere tabelas pelo painel da Neon.
+7. **Senhas nunca são guardadas**, só o hash (`src/lib/senha.ts`). E o `.env`/`.env.producao`
+   nunca são compartilhados.
+
+---
+
+## 3. Como os dados andam: do orçamento criado até a cobrança
+
+```
+ Empresa (logada)                         Cliente final (sem login)
+ ─────────────────                        ─────────────────────────
+ 1. Novo orçamento ──► salvarOrcamento
+                        (grava Orcamento + itens, sorteia o token)
+ 2. Enviar no WhatsApp ─► marcarEnviado ──► link wa.me com /orcamento/<token>
+                        (status "enviado", enviadoEm)          │
+                                                               ▼
+                                          3. Abre /orcamento/<token>
+                                             registrarAbertura (status "aberto")
+                                             pode baixar o PDF (/orcamento/<token>/pdf)
+ 4. Cobrar hoje ◄── buscarFila (dias desde o envio, abriu ou não)
+    Enviar cobrança ─► registrarCobranca  |  Já respondeu ─► status "respondido"
+ 5. Painel: valor parado, enviados, fechados, taxa
+```
+
+### Passo 1: criar o orçamento
+1. `/orcamentos/novo` (`src/app/(app)/orcamentos/novo/page.tsx`) busca os clientes e o catálogo
+   **da empresa logada** e entrega ao formulário.
+2. O formulário (`form-orcamento.tsx`) roda no navegador: a pessoa escolhe o cliente, busca
+   itens do catálogo, ajusta quantidade e preço, e vê o total mudar na hora
+   (`calcularSubtotal` em `src/lib/dinheiro.ts`). Cliente novo? O link "Cliente novo? Cadastrar"
+   vai para `/clientes/novo?voltar=orcamento` e volta com o cliente já escolhido.
+3. Ao salvar, chama `salvarOrcamento` (`src/app/(app)/orcamentos/actions.ts`), que:
+   - confere o login e que o cliente é **desta** empresa;
+   - valida e **recalcula** cada subtotal e o total, em centavos;
+   - numa transação, pega o maior número da empresa e soma 1 (nº 1, 2, 3...);
+   - define a validade (hoje + `diasValidade` da empresa);
+   - grava o `Orcamento` e os `OrcamentoItem`. Os itens guardam uma **cópia** da descrição e
+     do preço: mudar o catálogo depois não altera orçamentos antigos;
+   - o próprio banco sorteia o `token` (64 caracteres aleatórios) do link público;
+   - abre a tela do orçamento com o aviso "Orçamento criado".
+
+### Passo 2: enviar
+1. `/orcamentos/[id]` (`src/app/(app)/orcamentos/[id]/page.tsx`) monta:
+   - o link público: `urlBase()` (`src/lib/url.ts`) + `/orcamento/<token>`;
+   - a mensagem, a partir do modelo "mensagem de envio" dos Ajustes (`montarMensagem` em
+     `src/lib/mensagem.ts`, que troca `{nome}`, `{valor}`, `{link}` etc.);
+   - o número do cliente no formato do WhatsApp (`telefoneParaWhatsApp` em `src/lib/telefone.ts`).
+2. O botão "Enviar no WhatsApp" (`botoes-envio.tsx`) é um link `https://wa.me/<número>?text=...`
+   que abre o WhatsApp. Ao tocar, chama `marcarEnviado`: grava `enviadoEm` (só o **primeiro**
+   envio, porque é dele que a cobrança conta os dias) e muda o status de rascunho para enviado.
+
+### Passo 3: o cliente abre o link
+1. `/orcamento/[token]` (`src/app/orcamento/[token]/page.tsx`) é **pública**: busca o orçamento
+   pelo token (quem tem o link, vê).
+2. `visitaContaComoAbertura` (`src/lib/abertura.ts`) decide se a visita conta: **não** contam
+   robôs (a prévia do WhatsApp), a própria empresa logada nem pré-carregamentos do navegador.
+3. Se conta, `registrarAbertura` roda depois de a página ser enviada (`after`): grava `abertoEm`
+   (1ª vez), soma `vezesAberto` (no máximo uma vez a cada 30 min) e muda o status para
+   **aberto**. Se o orçamento ainda era rascunho (link mandado por "Copiar link"), também marca
+   como enviado agora.
+4. O `generateMetadata` da mesma página define o cartão da prévia no WhatsApp (título, valor,
+   logo ou imagem neutra) e pede ao Google para não indexar.
+5. "Baixar PDF" chama `/orcamento/[token]/pdf` (`pdf/route.ts`), que monta o PDF no servidor
+   (`pdf/documento-pdf.tsx`) e devolve o arquivo para download.
+
+### Passo 4: a cobrança
+1. Toda tela interna (`src/app/(app)/layout.tsx`) chama `contarFila` para mostrar a bolinha
+   vermelha em "Cobrar hoje". A contagem também aplica `marcarPerdidosVencidos`: quem passou do
+   prazo de "desistir" vira **perdido**. Não existe um "relógio": a regra roda sempre que o
+   sistema é aberto.
+2. `/cobrar` chama `buscarFila` (`src/lib/cobranca.ts`), que para cada orçamento **enviado ou
+   aberto**: conta os dias de calendário (Brasília) desde `enviadoEm`, decide a etapa devida (1ª
+   ou 2ª, conforme os prazos dos Ajustes e as cobranças já feitas), escolhe o modelo de texto
+   (viu / não viu) e monta a mensagem.
+3. Cada cartão (`cartao-cobranca.tsx`) tem a mensagem editável e dois botões:
+   - "Enviar no WhatsApp" abre o `wa.me` e chama `registrarCobranca`, que grava uma `Cobranca`
+     (a etapa e o texto final). Assim aquela etapa não aparece de novo;
+   - "O cliente já respondeu" chama `marcarRespondido`, que tira o orçamento da fila.
+4. Trocar o status para respondido, fechado ou perdido (pílula de status na lista ou no
+   orçamento) também tira da fila.
+
+### Passo 5: o painel
+`/painel` mostra o **valor parado** (soma dos orçamentos enviados ou abertos, de qualquer mês),
+e os enviados, fechados e a taxa de fechamento **entre os enviados no mês atual**.
+
+---
+
+## 4. As tabelas (`prisma/schema.prisma`)
+
+| Tabela | O que guarda |
+|---|---|
+| `Empresa` | Cada empresa cliente: nome, telefone, condição de pagamento, dias de validade, mensagem de envio, prazos de cobrança (1ª, 2ª, desistir) e os 4 modelos de mensagem de cobrança. |
+| `EmpresaLogo` | A imagem do logo (PNG/JPG), separada para não pesar nas outras consultas. |
+| `Usuario` | O login da empresa (um por empresa): email, hash da senha, contador de tentativas erradas e bloqueio. |
+| `Sessao` | Cada login aberto (um celular, um computador). Guarda o hash do código do cookie. Dura 30 dias. |
+| `Cliente` | Os clientes da empresa: nome, telefone, observação. |
+| `Item` | O catálogo: descrição, preço (centavos), unidade. |
+| `Orcamento` | Número, cliente, total (centavos), observação, validade, status, token do link, datas de envio/abertura, vezes aberto. |
+| `OrcamentoItem` | As linhas do orçamento: cópia da descrição e do preço, quantidade (aceita 2,5), subtotal. |
+| `Cobranca` | Cada cobrança enviada: etapa (1 ou 2) e o texto. Uma por etapa por orçamento. |
+
+**Status do orçamento:** `rascunho` → `enviado` (tocou em Enviar) → `aberto` (cliente viu,
+automático) → `respondido` / `fechado` / `perdido` (à mão; perdido também é automático após o
+prazo de desistir). Enquanto está **enviado ou aberto**, o orçamento está "esperando o cliente"
+e entra na cobrança e no valor parado.
+
+---
+
+## 5. Arquivo por arquivo
+
+### Raiz do projeto
+| Arquivo | O que faz |
+|---|---|
+| `package.json` | Bibliotecas usadas e comandos (seção 1). `postinstall` gera o código do Prisma; `vercel-build` aplica migrations antes de montar o site na Vercel. |
+| `package-lock.json` | Versões exatas das bibliotecas. Gerado pelo npm; não se edita. |
+| `.env` | **Secreto.** Endereços do banco de testes (`dev`). Fora do git. |
+| `.env.producao` | **Secreto.** Endereços do banco real (`production`). Só usado pelos comandos `*:producao`. Fora do git. |
+| `.env.example` | Modelo do `.env` sem senhas: mostra quais variáveis existem. |
+| `.gitignore` | O que o git ignora (`node_modules`, `.env*` exceto o exemplo, código gerado do Prisma). |
+| `prisma.config.ts` | Diz ao Prisma onde estão o schema e as migrations, e que ele usa `DIRECT_URL`. |
+| `next.config.ts` | Cabeçalhos de proteção em todas as páginas (anti-moldura, nosniff, referrer), acesso pela rede de casa no `npm run dev` e raiz do projeto. |
+| `vercel.json` | Roda o site em São Paulo (`gru1`). |
+| `tsconfig.json` | Configuração do TypeScript (o atalho `@/` aponta para `src/`). |
+| `eslint.config.mjs` | Regras do `npm run lint`. |
+| `postcss.config.mjs` | Liga o Tailwind ao CSS. |
+| `README.md` | Apresentação curta do projeto (primeira coisa que aparece no GitHub). |
 | `MAPA.md` | Este arquivo. |
+| `CLAUDE.md` / `AGENTS.md` | Instruções para assistentes de IA (inclui: manter este mapa atualizado). |
 
-## Banco de dados
+Pastas geradas (fora do git, não se edita): `node_modules/` (bibliotecas, recriada por
+`npm install`), `.next/` (arquivos temporários do Next; pode apagar se algo ficar estranho),
+`src/generated/prisma/` (código gerado pelo Prisma a partir do schema).
 
-| Arquivo / pasta | O que faz |
-|---|---|
-| `.env` | **Secreto.** Endereços do banco de **testes** (branch `dev` da Neon), usado pelo Mac. Nunca vai para o git. `DATABASE_URL` (com pooler) é usada pelo site; `DIRECT_URL` (conexão direta) é usada pelas migrations. |
-| `.env.producao` | **Secreto.** Endereços do banco **real** (branch `production`), o mesmo que a Vercel usa. Só é lido pelos comandos `*:producao` (ex.: `npm run demo:producao`). Nunca vai para o git. |
-| `.env.example` | Modelo do `.env` sem senhas. Mostra quais variáveis o projeto precisa. Vai para o git. |
-| `prisma.config.ts` | Diz ao Prisma onde está o schema, onde ficam as migrations e de onde vem o endereço do banco (usa `DIRECT_URL`). |
-| `prisma/schema.prisma` | Descreve as tabelas do banco (como as `@Entity` do JPA): Empresa (inclui a mensagem de envio, os prazos e os 4 modelos de cobrança), Cobranca (cada cobrança enviada), EmpresaLogo (a imagem do logo), Usuario (login), Sessao (logins abertos), Cliente, Item (catálogo), Orcamento e OrcamentoItem (linhas do orçamento). |
-| `prisma/migrations/` | Histórico das mudanças no banco. Cada pasta é um `.sql` que o Prisma gerou e aplicou. **Não edite à mão.** Se depois de uma migration aparecer `PrismaClientValidationError`, reinicie o `npm run dev` (Ctrl + C e rodar de novo). |
-| `src/generated/prisma/` | Código gerado pelo Prisma a partir do schema (`npx prisma generate`). Não vai para o git e não se edita. |
-| `src/lib/prisma.ts` | Cria a conexão com o banco que o site inteiro usa. Todo acesso ao banco começa com `import { prisma } from "@/lib/prisma"`. Tem a trava `server-only` (scripts de terminal rodam com `--conditions=react-server` por causa dela). Em desenvolvimento, recria a conexão sozinho quando o Prisma é regenerado. |
-
-## Regras e utilidades (`src/lib/`)
-
+### Banco de dados (`prisma/`)
 | Arquivo | O que faz |
 |---|---|
-| `src/lib/auth.ts` | **Porta de entrada.** `exigirSessao()` confere o login e devolve o `empresaId`. Toda página interna e toda ação que grava dados deve chamar essa função e usar o `empresaId` dela nas consultas. |
-| `src/lib/sessao.ts` | Cria, lê e apaga a sessão (o cookie `sessao` + a linha na tabela Sessao). Login dura 30 dias. O cookie só exige https quando a conexão é https (Vercel); no Mac, em http, funciona normal. |
-| `src/lib/senha.ts` | Embaralha a senha (scrypt com custo recomendado pela OWASP: N=2^17, r=8, p=1) e confere a senha digitada. Aceita o formato antigo e avisa quando ele precisa ser refeito (`precisaRefazer`). |
-| `src/lib/cobranca.ts` | **A regra de cobrança.** Conta os dias desde o envio (calendário de Brasília), decide a etapa devida (1ª ou 2ª), escolhe o modelo certo (abriu/não abriu), monta a fila de "Cobrar hoje" (`buscarFila`), conta a fila para o aviso (`contarFila`, mesma decisão) e marca como perdido quem passou do prazo. Não há "relógio": roda sempre que o sistema é aberto. |
-| `src/lib/mes.ts` | `mesAtual()`: início e fim do mês atual no horário de Brasília, e o nome ("setembro de 2026"). |
-| `src/lib/status.ts` | Nome e cor de cada status, e quais contam como "esperando o cliente" (enviado, aberto). |
-| `src/lib/abertura.ts` | Registro de abertura do link público. Decide se a visita conta (ignora robôs como a prévia do WhatsApp, a própria empresa logada e pré-carregamentos) e grava `abertoEm` (1ª vez) e `vezesAberto`. Muda o status para **aberto** (se era rascunho ou enviado); se era rascunho, também marca como enviado agora. Aberturas com menos de 30 min de diferença contam como uma só (`ultimaAberturaEm`). |
-| `src/lib/telefone.ts` | `telefoneParaWhatsApp` (limpa o número e põe o 55 do Brasil: "(21) 99999-8888" → "5521999998888") e `formatarTelefone` (mostra como "(21) 99999-8888"). |
-| `src/lib/mensagem.ts` | Monta mensagens trocando `{nome}` (primeiro nome), `{cliente}` (nome completo), `{empresa}`, `{valor}`, `{link}`, `{validade}` e `{numero}` pelos dados reais (`{total}` ainda funciona como sinônimo de `{valor}`). |
-| `src/lib/formatos.ts` | Datas (`formatarData`, `formatarDataCurta`, `formatarDataHora`, no fuso de Brasília) e `formatarQuantidade`. |
-| `src/lib/url.ts` | `urlBase()`: descobre o endereço do site (Vercel em produção) para montar links completos. No `npm run dev`, troca `localhost` pelo IP do Mac na rede, para o link abrir no celular. |
-| `src/lib/dinheiro.ts` | Funções de dinheiro: `formatarCentavos` (1250 → "R$ 12,50"), `lerReais` ("12,50" → 1250) e `calcularSubtotal` (quantidade × preço, arredondado) `centavosParaTexto` (1250 → "12,50", para preencher campos), `lerQuantidade` ("2,5" → 2.5), `quantidadeParaTexto` e `VALOR_MAXIMO` (R$ 20 milhões: o banco guarda centavos num inteiro que vai até ~R$ 21,4 milhões). |
+| `prisma/schema.prisma` | As tabelas (seção 4), com comentários. Os textos padrão das mensagens para empresas **novas** estão aqui. |
+| `prisma/migrations/` | Histórico de cada mudança no banco, em SQL, na ordem em que foi feita. **Não edite à mão.** |
 
-## Componentes (`src/components/`)
-
+### Regras e utilidades (`src/lib/`)
 | Arquivo | O que faz |
 |---|---|
-| `src/components/seletor-status.tsx` | Seletor de status (Rascunho, Enviado, Aberto, Respondido, Fechado, Perdido) usado na lista e na tela do orçamento. Muda na hora e mostra "Salvo ✓". |
-| `src/components/aviso.tsx` | Aviso verde de "deu certo" (ex.: "Cliente salvo."), mostrado quando a tela recebe `?ok=<código>`. Os códigos e textos ficam aqui. |
-| `src/components/estado-vazio.tsx` | Tela vazia padrão: ícone, título, explicação do que fazer e botão. |
-| `src/components/estilos.ts` | Classes do Tailwind de campos (48px), botões (principal azul `marca`, secundário, perigo), cartões, títulos e mensagens. Mudar aqui muda o visual do sistema todo. |
+| `auth.ts` | `exigirSessao()`: confere o login e devolve `empresaId` e nome da empresa. **A porta de entrada de tudo.** |
+| `sessao.ts` | Cria, lê e apaga a sessão (cookie `sessao` + tabela `Sessao`). Cookie invisível ao JavaScript; exige https quando a conexão é https (Vercel). |
+| `senha.ts` | Hash da senha com scrypt (custo recomendado pela OWASP) e conferência no login. Aceita e manda refazer hashes antigos. |
+| `prisma.ts` | A conexão com o banco usada por tudo (`import { prisma } from "@/lib/prisma"`). Tem a trava `server-only` e se recria sozinha quando o Prisma é regenerado. |
+| `dinheiro.ts` | `formatarCentavos` (1250 → "R$ 12,50"), `lerReais` ("12,50" → 1250), `calcularSubtotal`, `centavosParaTexto`, `lerQuantidade` ("2,5" → 2.5) e `VALOR_MAXIMO`. |
+| `formatos.ts` | Datas no fuso de Brasília (`formatarData`, `formatarDataHora`) e `formatarQuantidade`. |
+| `telefone.ts` | `telefoneParaWhatsApp` ("(21) 99999-8888" → "5521999998888") e `formatarTelefone`. |
+| `mensagem.ts` | `montarMensagem`: troca `{nome}`, `{cliente}`, `{empresa}`, `{valor}`, `{link}`, `{validade}`, `{numero}` pelos dados reais. |
+| `status.ts` | Nome e cor de cada status, e quais contam como "esperando o cliente". |
+| `cobranca.ts` | **A regra de cobrança** (passo 4): dias desde o envio, etapa devida, fila do dia, contagem para a bolinha, perdidos automáticos. |
+| `abertura.ts` | Decide se uma visita ao link conta como abertura e grava a abertura (passo 3). |
+| `mes.ts` | Início, fim e nome do mês atual em Brasília (para o painel). |
+| `url.ts` | `urlBase()`: endereço do site para montar links. No `npm run dev`, troca `localhost` pelo IP do Mac na rede. |
 
-## Telas (`src/app/`)
-
-No App Router, cada pasta dentro de `src/app` vira um endereço do site.
-Exemplo: `src/app/(app)/clientes/page.tsx` → `/clientes`.
-Pastas com colchetes, como `[id]`, são partes variáveis: `/clientes/abc123` abre `clientes/[id]/page.tsx` com `id = "abc123"`.
-
-Padrão de cada tela de cadastro (clientes, catálogo):
-- `page.tsx` = a lista · `novo/page.tsx` = criar · `[id]/page.tsx` = editar
-- `form-*.tsx` = o formulário (o mesmo para criar e editar)
-- `actions.ts` = o que acontece ao salvar/apagar (sempre chama `exigirSessao()` e filtra por `empresaId`)
-
+### Componentes compartilhados (`src/components/`)
 | Arquivo | O que faz |
 |---|---|
-| `src/app/layout.tsx` | Moldura comum a todas as páginas (`<html>`, título, ícone e imagem de prévia neutros). Desliga a transformação automática de telefones em links do Safari (evita o erro "Hydration failed"). |
-| `src/app/globals.css` | CSS global e **identidade visual**: a cor de destaque `marca` (azul escuro, só em botão principal e valores totais), fonte do sistema, fundo cinza bem claro, texto de 16px. Tem as regras de impressão/PDF (folha A4, margens, imprimir cores de fundo). As classes `print:` nas páginas também só valem na impressão. |
-| `src/app/login/page.tsx` | Tela de login (`/login`). Quem já está logado é mandado para `/`. |
-| `src/app/login/form-login.tsx` | O formulário de login (roda no navegador para mostrar erros e o "Entrando..."). |
-| `src/app/login/actions.ts` | Confere email e senha, bloqueia por 15 min após 5 erros seguidos (contagem atômica: tentativas simultâneas não furam o limite), refaz senhas no formato antigo e cria a sessão. |
-| `src/app/(app)/` | Grupo das páginas **internas** (exigem login). Os parênteses não aparecem no endereço. |
-| `src/app/(app)/layout.tsx` | Moldura das páginas internas: confere o login, mostra o nome da empresa, os atalhos Clientes e Ajustes, e conta a fila de cobrança para a bolinha vermelha do menu. Troca o ícone da aba pelo logo da empresa, se houver. |
-| `src/app/(app)/actions.ts` | Ação `sair()`: apaga a sessão e volta para o login. |
-| `src/app/(app)/page.tsx` | Página inicial (`/`). Só redireciona para `/orcamentos`. |
-| `src/app/(app)/painel/page.tsx` | **Painel** (`/painel`): valor parado esperando resposta (em destaque), e enviados, fechados e taxa de fechamento do mês. |
-| `src/app/(app)/menu.tsx` | Menu principal com 4 ícones (Orçamentos, Cobrar hoje, Catálogo, Painel): barra fixa embaixo no celular, abas no topo no computador. "Cobrar hoje" tem a bolinha vermelha com o número. |
-| `src/app/(app)/cobrar/page.tsx` | **Cobrar hoje** (`/cobrar`), a tela principal do produto: lista quem precisa ser cobrado hoje (regra em `src/lib/cobranca.ts`). |
-| `src/app/(app)/cobrar/cartao-cobranca.tsx` | Um cartão por cliente: valor, há quantos dias foi enviado, se abriu, qual cobrança, mensagem editável e os botões "Enviar no WhatsApp" e "Já respondeu". |
-| `src/app/(app)/cobrar/actions.ts` | `registrarCobranca` (grava a cobrança enviada, com o texto final, e tira da fila) e `marcarRespondido`. O sistema nunca envia nada sozinho. |
-| `src/app/(app)/orcamentos/page.tsx` | Lista de orçamentos: mais recentes primeiro, com cliente, número, data, status e total (mostra os 100 últimos). Tocar abre o orçamento. Selo **Visto** / **Não visto** mostra se o cliente abriu o link. Cada linha tem o seletor de status. No topo, o aviso amarelo "N orçamentos esperando cobrança hoje" leva para `/cobrar`. |
-| `src/app/(app)/orcamentos/[id]/page.tsx` | Tela interna de um orçamento: quando foi enviado, cobranças já feitas, se/quando o cliente abriu, resumo, itens, botões de envio e o link da página pública. Monta a mensagem e o link `wa.me`. |
-| `src/app/(app)/orcamentos/[id]/botoes-envio.tsx` | Botões "Enviar no WhatsApp" (abre o WhatsApp e marca como enviado) e "Copiar link". |
-| `src/app/(app)/orcamentos/novo/page.tsx` | Tela de novo orçamento. Busca clientes e o catálogo inteiro e entrega ao formulário. |
-| `src/app/(app)/orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento: escolher cliente, buscar e adicionar itens, editar quantidade e preço, total ao vivo, observação. |
-| `src/app/(app)/orcamentos/actions.ts` | `salvarOrcamento`: valida tudo, **recalcula** subtotais e total no servidor, gera o número sequencial da empresa e a validade (hoje + `diasValidade`), e abre o orçamento criado. `marcarEnviado`: guarda `enviadoEm` do PRIMEIRO envio e muda rascunho → enviado. `alterarStatus`: troca manual de status. |
-| `src/app/(app)/clientes/page.tsx` | Lista de clientes (ordem alfabética). |
-| `src/app/(app)/clientes/novo/page.tsx` | Tela de novo cliente. |
-| `src/app/(app)/clientes/[id]/page.tsx` | Tela de editar cliente. |
-| `src/app/(app)/clientes/form-cliente.tsx` | Formulário de cliente (nome, telefone, observação). |
-| `src/app/(app)/clientes/actions.ts` | `salvarCliente`: valida e cria/edita. |
-| `src/app/(app)/catalogo/page.tsx` | Lista do catálogo com busca (`/catalogo?busca=lona`). |
-| `src/app/(app)/catalogo/novo/page.tsx` | Tela de novo item. |
-| `src/app/(app)/catalogo/[id]/page.tsx` | Tela de editar item (com botão Apagar). |
-| `src/app/(app)/catalogo/form-item.tsx` | Formulário de item (descrição, preço, unidade). |
-| `src/app/(app)/catalogo/actions.ts` | `salvarItem` e `apagarItem`. |
-| `src/app/(app)/configuracoes/page.tsx` | Tela **Ajustes** (`/configuracoes`): logo, dados da empresa, cobrança e o botão **Sair do sistema**. |
-| `src/app/(app)/configuracoes/form-empresa.tsx` | Formulário: nome, telefone, condição de pagamento, dias de validade e mensagem de envio (com prévia ao vivo). |
-| `src/app/(app)/configuracoes/form-cobranca.tsx` | Seção Cobrança: prazos (1ª, 2ª, perdido) e os 4 modelos de mensagem (1ª/2ª × abriu/não abriu). |
-| `src/app/(app)/configuracoes/logo.tsx` | Escolher/trocar/remover logo. Reduz a imagem no navegador (máx. 512 px) antes de enviar. |
-| `src/app/(app)/configuracoes/actions.ts` | `salvarEmpresa`, `salvarCobranca` (prazos em ordem, mensagens não vazias), `salvarLogo` (confere se o arquivo é mesmo PNG/JPG/WebP) e `removerLogo`. |
-| `src/app/logo/[empresaId]/route.ts` | Entrega a imagem do logo guardada no banco (endereço `/logo/<empresaId>`). Público, porque aparece na página do cliente. |
-| `src/app/orcamento/[token]/page.tsx` | **Página pública** do orçamento (sem login), a que o cliente abre. O `token` é um código de 64 caracteres sorteado pelo banco. O telefone da empresa é um link de ligação. Também define o título/descrição/imagem da prévia no WhatsApp e o ícone da aba (logo da empresa ou o neutro), pede ao Google para não indexar e registra a abertura (ver `src/lib/abertura.ts`). |
-| `src/app/orcamento/[token]/botao-pdf.tsx` | Botão "Baixar PDF": link para `/orcamento/<token>/pdf`, que baixa o arquivo direto. |
-| `src/app/orcamento/[token]/pdf/route.ts` | Gera o PDF do orçamento no servidor e devolve para download (`orcamento-14-oficina-silva.pdf`). Público como a página do cliente. |
-| `src/app/orcamento/[token]/pdf/documento-pdf.tsx` | O desenho do PDF (folha A4): logo, número, dados, tabela de itens, total, condições. Usa `@react-pdf/renderer` (não é HTML). Só aceita logo PNG/JPG. |
-| `src/app/orcamento/[token]/not-found.tsx` | Mensagem para o **cliente** quando o link do orçamento está errado (sem link para o login). |
-| `src/app/not-found.tsx` | Página "não encontrada" (endereço inexistente ou de outra empresa). |
-| `public/` | Arquivos servidos direto pelo endereço (ex.: `/icone.png`). |
-| `public/icone.png`, `apple-icone.png`, `favicon.ico`, `icone.svg` | Ícone **neutro** do sistema (quadrado azul com documento branco), usado na aba do navegador e na tela inicial do celular quando a empresa não tem logo. `icone.svg` é o desenho original. |
-| `public/og-padrao.png` | Imagem **neutra** da prévia de link (WhatsApp) quando a empresa não tem logo. |
+| `estilos.ts` | Classes de campos (48px), botões (principal azul, secundário, perigo), cartões, títulos e mensagens. **Mudar aqui muda o visual do sistema todo.** |
+| `seletor-status.tsx` | A pílula de status que troca na hora e mostra "Salvo ✓". |
+| `aviso.tsx` | Aviso verde de "deu certo" quando a tela recebe `?ok=<código>`. Os códigos e textos ficam aqui. |
+| `estado-vazio.tsx` | Tela vazia padrão: ícone, título, explicação e botão. |
 
-## Scripts (`scripts/`)
+### Páginas e ações (`src/app/`)
+No App Router, cada pasta vira um endereço: `src/app/(app)/clientes/page.tsx` → `/clientes`.
+Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre colchetes, como
+`[id]`, são partes variáveis (`/clientes/abc123` → `id = "abc123"`). `page.tsx` é a tela,
+`actions.ts` é o que roda no servidor ao salvar, `form-*.tsx` é o formulário (roda no navegador).
 
+**Geral**
 | Arquivo | O que faz |
 |---|---|
-| `scripts/demo-oficina.ts` | Dados de demonstração: recria a "Oficina Silva" (12 clientes, 25 itens de oficina, 18 orçamentos com datas a partir de hoje, 3 deles em "Cobrar hoje"). `npm run demo` (banco de testes) ou `npm run demo:producao` (site publicado). Apaga só a Oficina Silva anterior. |
-| `scripts/demo/logo-oficina-silva.png` | Logo da Oficina Silva usado pelo script de demonstração. |
-| `scripts/criar-empresa.ts` | Cadastra uma empresa e o usuário de login dela. `npm run criar-empresa` (testes) ou **`npm run criar-empresa:producao`** (clientes reais, no site publicado). É o único jeito de criar contas (não existe cadastro público). |
+| `src/app/layout.tsx` | Moldura de todas as páginas: idioma, título, ícone e imagem de prévia neutros, e desliga a transformação automática de telefones em link do Safari. |
+| `src/app/globals.css` | **Identidade visual:** cor de destaque `marca` (azul escuro, só em botão principal e valores totais), fonte do sistema, fundo cinza claro. |
+| `src/app/not-found.tsx` | "Página não encontrada" (endereço inexistente ou de outra empresa). |
+
+**Login (`src/app/login/`)**
+| Arquivo | O que faz |
+|---|---|
+| `page.tsx` | Tela de entrada. Quem já está logado vai direto para o sistema. |
+| `form-login.tsx` | O formulário de email e senha. |
+| `actions.ts` | `entrar`: confere a senha, bloqueia por 15 min após 5 erros (contagem à prova de tentativas simultâneas) e cria a sessão. |
+
+**Sistema interno, com login (`src/app/(app)/`)**
+| Arquivo | O que faz |
+|---|---|
+| `layout.tsx` | Exige login em todas as telas internas; topo com nome da empresa, Clientes e Ajustes; conta a fila de cobrança; troca o ícone da aba pelo logo da empresa. |
+| `menu.tsx` | Menu de 4 ícones (Orçamentos, Cobrar hoje, Catálogo, Painel): embaixo no celular, no topo no computador. Bolinha vermelha em Cobrar hoje. |
+| `page.tsx` | `/` só redireciona para `/orcamentos`. |
+| `actions.ts` | `sair`: apaga a sessão. |
+| `orcamentos/page.tsx` | Lista de orçamentos (mais recentes primeiro), faixa de cobrança pendente, pílula de status e "Viu / Não viu". |
+| `orcamentos/novo/page.tsx` | Tela de novo orçamento (explica o que falta se não houver cliente ou catálogo). |
+| `orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento com total ao vivo (passo 1). |
+| `orcamentos/[id]/page.tsx` | Um orçamento: total, envio, "Ver como o cliente vê", PDF, itens, observação e histórico. |
+| `orcamentos/[id]/botoes-envio.tsx` | "Enviar no WhatsApp" e "Copiar link do orçamento". |
+| `orcamentos/actions.ts` | `salvarOrcamento`, `marcarEnviado`, `alterarStatus`. |
+| `cobrar/page.tsx` | **Cobrar hoje**, a tela principal do produto (passo 4). |
+| `cobrar/cartao-cobranca.tsx` | Um cartão por cliente com a mensagem pronta e os dois botões. |
+| `cobrar/actions.ts` | `registrarCobranca` e `marcarRespondido`. |
+| `painel/page.tsx` | Os quatro números (passo 5). |
+| `clientes/page.tsx` | Lista de clientes. |
+| `clientes/novo/page.tsx` | Novo cliente (com `?voltar=orcamento`, volta ao orçamento com o cliente escolhido). |
+| `clientes/[id]/page.tsx` | Editar cliente. |
+| `clientes/form-cliente.tsx` | Formulário de cliente (nome, WhatsApp, observação). |
+| `clientes/actions.ts` | `salvarCliente`. |
+| `catalogo/page.tsx` | Catálogo com busca (`/catalogo?busca=oleo`). |
+| `catalogo/novo/page.tsx` | Novo item. |
+| `catalogo/[id]/page.tsx` | Editar item (com Apagar). |
+| `catalogo/form-item.tsx` | Formulário de item (nome, preço, "cobrado por"). |
+| `catalogo/actions.ts` | `salvarItem`, `apagarItem`. |
+| `configuracoes/page.tsx` | Tela **Ajustes**: logo, dados da empresa, cobrança e "Sair do sistema". |
+| `configuracoes/form-empresa.tsx` | Nome, telefone, condição de pagamento, validade e mensagem de envio (com exemplo ao vivo). |
+| `configuracoes/form-cobranca.tsx` | Prazos (1ª, 2ª, desistir) e os 4 modelos de cobrança. |
+| `configuracoes/logo.tsx` | Enviar/trocar/remover logo; reduz a imagem no navegador (512px, PNG). |
+| `configuracoes/actions.ts` | `salvarEmpresa`, `salvarCobranca`, `salvarLogo` (confere se é mesmo PNG/JPG/WebP), `removerLogo`. |
+
+**Público, sem login**
+| Arquivo | O que faz |
+|---|---|
+| `src/app/orcamento/[token]/page.tsx` | A página que o cliente final abre (passo 3): documento com logo, dados, itens, total, condições, "Responder no WhatsApp" (se a empresa tem celular) e "Baixar PDF". |
+| `src/app/orcamento/[token]/botao-pdf.tsx` | O botão "Baixar PDF". |
+| `src/app/orcamento/[token]/not-found.tsx` | Mensagem para o cliente quando o link está errado (sem caminho para o login). |
+| `src/app/orcamento/[token]/pdf/route.ts` | Gera e devolve o PDF (`orcamento-14-oficina-silva.pdf`). |
+| `src/app/orcamento/[token]/pdf/documento-pdf.tsx` | O desenho do PDF em A4 (biblioteca `@react-pdf/renderer`, não é HTML; só aceita logo PNG/JPG). |
+| `src/app/logo/[empresaId]/route.ts` | Entrega a imagem do logo guardada no banco (`/logo/<empresaId>`). |
+
+### Arquivos públicos (`public/`)
+| Arquivo | O que faz |
+|---|---|
+| `icone.png`, `apple-icone.png`, `favicon.ico`, `icone.svg` | Ícone neutro do sistema (quadrado azul com documento), usado quando a empresa não tem logo. `icone.svg` é o desenho original. |
+| `og-padrao.png` | Imagem neutra da prévia de link no WhatsApp quando a empresa não tem logo. |
+
+### Scripts de terminal (`scripts/`)
+| Arquivo | O que faz |
+|---|---|
+| `criar-empresa.ts` | Cadastra empresa + login (`npm run criar-empresa` / `:producao`). |
+| `demo-oficina.ts` | Recria a Oficina Silva de demonstração: 12 clientes, 25 itens, 18 orçamentos com datas a partir de hoje, 3 para cobrar hoje (`npm run demo` / `:producao`). |
+| `demo/logo-oficina-silva.png` | Logo da Oficina Silva. |
+
+---
+
+## 6. Onde mexer para...
+
+| Quero... | Onde |
+|---|---|
+| Cadastrar um cliente pagante novo | `npm run criar-empresa:producao` |
+| Mudar cores, botões, tamanhos | `src/app/globals.css` (cor `marca`) e `src/components/estilos.ts` |
+| Mudar os textos padrão das mensagens | Empresas novas: `@default(...)` em `prisma/schema.prisma` (+ migration). Empresas existentes: tela Ajustes de cada uma. |
+| Mudar a regra de cobrança | `src/lib/cobranca.ts` (os prazos em si ficam nos Ajustes de cada empresa) |
+| Mudar o que conta como "cliente abriu" | `src/lib/abertura.ts` |
+| Mudar a página que o cliente vê | `src/app/orcamento/[token]/page.tsx` (e o PDF em `pdf/documento-pdf.tsx`, para ficarem iguais) |
+| Adicionar um campo ao orçamento | `schema.prisma` + migration → `orcamentos/actions.ts` → `form-orcamento.tsx` → telas `orcamentos/[id]`, página pública e PDF |
+| Adicionar um status | `enum StatusOrcamento` no schema (+ migration) e `src/lib/status.ts` |
+| Adicionar um aviso de "salvo" | `MENSAGENS` em `src/components/aviso.tsx` e `redirect("...?ok=codigo")` na ação |
+
+---
+
+## 7. Problemas conhecidos e dicas
+
+- **Login volta para a tela de entrada no Mac:** você rodou `npm start`. Use `npm run dev`.
+- **`PrismaClientValidationError` depois de mudar o banco:** reinicie o `npm run dev` (Ctrl+C e rodar de novo).
+- **Visual estranho ou botão invisível no Safari durante o desenvolvimento:** recarregue com Cmd+Shift+R.
+- **Testar no celular em casa:** o celular precisa estar no mesmo Wi-Fi. Descubra o IP do Mac
+  com `ipconfig getifaddr en0` e abra `http://<IP>:3000`. O IP muda de vez em quando. Pelo IP
+  o login é pedido de novo (o navegador trata como outro site).
+- **Links enviados pelo sistema rodando no Mac** só funcionam na sua rede e não geram prévia no
+  WhatsApp. Para clientes, use sempre o site publicado.
+- **Prévia do WhatsApp desatualizada:** o WhatsApp guarda a prévia de cada link já enviado;
+  envios novos saem certos.
+- **`npm audit` mostra alertas "altos":** todos na ferramenta de terminal do Prisma (não no site).
+  Atualizar o Prisma quando sair a versão corrigida.
+
+---
+
+## 8. Decisões tomadas e ideias para depois
+
+- **Vercel Hobby → Pro** quando entrar o primeiro cliente pagante (regra de uso da Vercel).
+- **Envio automático de cobranças** só seria possível de forma segura pela API oficial do
+  WhatsApp (Meta), que cobra por mensagem e exige aprovação dos textos. Ideia de plano premium.
+- **Um link de orçamento não pode ser "cancelado"**: quem tem o link vê para sempre. Se precisar,
+  criar um botão "gerar novo link" (sortear outro `token`).
+- **Bloqueio de login** (5 erros → 15 min) pode ser usado para trancar a conta de alguém por
+  15 minutos. Troca aceita em nome da segurança.
+- A taxa de fechamento conta **os enviados no mês que fecharam** (fica sempre entre 0% e 100%).

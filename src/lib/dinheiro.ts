@@ -43,11 +43,6 @@ export function lerQuantidade(texto: string): number | null {
   return valor > 0 ? valor : null;
 }
 
-// 2.5 -> "2,5" (para mostrar na tela)
-export function quantidadeParaTexto(quantidade: number): string {
-  return String(quantidade).replace(".", ",");
-}
-
 // Maior valor aceito num preço, subtotal ou total: R$ 20.000.000,00.
 // O banco guarda centavos num número inteiro que vai até ~R$ 21,4 milhões; acima disso
 // daria erro ao salvar. Para pequenas empresas é folga de sobra.
