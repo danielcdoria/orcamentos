@@ -1,3 +1,6 @@
+// Trava: dá erro se alguém importar este arquivo numa parte que roda no navegador.
+// A conexão com o banco (e o endereço com a senha) nunca pode sair do servidor.
+import "server-only";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 

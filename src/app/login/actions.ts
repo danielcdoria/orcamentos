@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { conferirSenha, gerarHashSenha } from "@/lib/senha";
+import { conferirSenha, gerarHashSenha, precisaRefazer } from "@/lib/senha";
 import { criarSessao } from "@/lib/sessao";
 
 export type EstadoLogin = { erro?: string; email?: string };
@@ -30,30 +30,58 @@ export async function entrar(_estado: EstadoLogin, formData: FormData): Promise<
     return { erro: "Email ou senha incorretos.", email };
   }
 
-  if (usuario.bloqueadoAte && usuario.bloqueadoAte > new Date()) {
-    return { erro: "Muitas tentativas erradas. Espere 15 minutos e tente de novo.", email };
+  const agora = new Date();
+  const mensagemBloqueio = "Muitas tentativas erradas. Espere 15 minutos e tente de novo.";
+
+  if (usuario.bloqueadoAte && usuario.bloqueadoAte > agora) {
+    return { erro: mensagemBloqueio, email };
+  }
+
+  // Bloqueio antigo já venceu: zera o contador.
+  if (usuario.bloqueadoAte) {
+    await prisma.usuario.updateMany({
+      where: { id: usuario.id, bloqueadoAte: { lte: agora } },
+      data: { tentativasFalhas: 0, bloqueadoAte: null },
+    });
+  }
+
+  // Cada tentativa "gasta uma ficha" ANTES de conferir a senha, somando +1 direto no
+  // banco (operação única). Assim, mesmo que um robô mande 50 tentativas ao mesmo tempo,
+  // só as 5 primeiras chegam a ter a senha conferida; o resto é recusado.
+  const { tentativasFalhas: tentativa } = await prisma.usuario.update({
+    where: { id: usuario.id },
+    data: { tentativasFalhas: { increment: 1 } },
+    select: { tentativasFalhas: true },
+  });
+  const bloquear = () =>
+    prisma.usuario.updateMany({
+      where: { id: usuario.id, bloqueadoAte: null },
+      data: { bloqueadoAte: new Date(Date.now() + BLOQUEIO_MS) },
+    });
+
+  if (tentativa > MAX_TENTATIVAS) {
+    await bloquear();
+    return { erro: mensagemBloqueio, email };
   }
 
   const senhaCerta = await conferirSenha(senha, usuario.senhaHash);
 
   if (!senhaCerta) {
-    const tentativas = usuario.tentativasFalhas + 1;
-    const bloquear = tentativas >= MAX_TENTATIVAS;
-    await prisma.usuario.update({
-      where: { id: usuario.id },
-      data: {
-        tentativasFalhas: bloquear ? 0 : tentativas,
-        bloqueadoAte: bloquear ? new Date(Date.now() + BLOQUEIO_MS) : null,
-      },
-    });
+    if (tentativa >= MAX_TENTATIVAS) await bloquear(); // foi a 5ª errada
     return { erro: "Email ou senha incorretos.", email };
   }
 
-  // Senha certa: zera o contador, apaga sessões vencidas desse usuário e cria uma nova.
+  // Senha certa: zera o contador. Se o hash era do formato antigo (mais fraco),
+  // aproveita que temos a senha agora e guarda no formato forte.
   await prisma.usuario.update({
     where: { id: usuario.id },
-    data: { tentativasFalhas: 0, bloqueadoAte: null },
+    data: {
+      tentativasFalhas: 0,
+      bloqueadoAte: null,
+      ...(precisaRefazer(usuario.senhaHash) && { senhaHash: await gerarHashSenha(senha) }),
+    },
   });
+  // Apaga sessões vencidas desse usuário e cria uma nova.
   await prisma.sessao.deleteMany({
     where: { usuarioId: usuario.id, expiraEm: { lt: new Date() } },
   });

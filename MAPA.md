@@ -11,7 +11,7 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 | `package-lock.json` | Registra a versão exata de cada biblioteca instalada. Gerado pelo npm, não se edita à mão. |
 | `node_modules/` | Onde as bibliotecas ficam instaladas. Não vai para o git; `npm install` recria. |
 | `tsconfig.json` | Configuração do TypeScript. |
-| `next.config.ts` | Configuração do Next.js. Libera o acesso pelo IP da rede de casa em desenvolvimento (`allowedDevOrigins`). Define a raiz do projeto (`turbopack.root`) porque existe um `package-lock.json` vazio em `~/` que confundia o Next. |
+| `next.config.ts` | Configuração do Next.js. Libera o acesso pelo IP da rede de casa em desenvolvimento (`allowedDevOrigins`). Envia os cabeçalhos de proteção (anti-moldura/clickjacking, nosniff, referrer) em todas as páginas. Define a raiz do projeto (`turbopack.root`) porque existe um `package-lock.json` vazio em `~/` que confundia o Next. |
 | `postcss.config.mjs` | Liga o Tailwind ao processo de build do CSS. |
 | `eslint.config.mjs` | Regras do ESLint, que aponta erros e más práticas no código (`npm run lint`). |
 | `next-env.d.ts` | Tipos do Next.js para o TypeScript. Gerado automaticamente. |
@@ -30,7 +30,7 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 | `prisma/schema.prisma` | Descreve as tabelas do banco (como as `@Entity` do JPA): Empresa (inclui a mensagem de envio, os prazos e os 4 modelos de cobrança), Cobranca (cada cobrança enviada), EmpresaLogo (a imagem do logo), Usuario (login), Sessao (logins abertos), Cliente, Item (catálogo), Orcamento e OrcamentoItem (linhas do orçamento). |
 | `prisma/migrations/` | Histórico das mudanças no banco. Cada pasta é um `.sql` que o Prisma gerou e aplicou. **Não edite à mão.** Se depois de uma migration aparecer `PrismaClientValidationError`, reinicie o `npm run dev` (Ctrl + C e rodar de novo). |
 | `src/generated/prisma/` | Código gerado pelo Prisma a partir do schema (`npx prisma generate`). Não vai para o git e não se edita. |
-| `src/lib/prisma.ts` | Cria a conexão com o banco que o site inteiro usa. Todo acesso ao banco começa com `import { prisma } from "@/lib/prisma"`. Em desenvolvimento, recria a conexão sozinho quando o Prisma é regenerado. |
+| `src/lib/prisma.ts` | Cria a conexão com o banco que o site inteiro usa. Todo acesso ao banco começa com `import { prisma } from "@/lib/prisma"`. Tem a trava `server-only` (scripts de terminal rodam com `--conditions=react-server` por causa dela). Em desenvolvimento, recria a conexão sozinho quando o Prisma é regenerado. |
 
 ## Regras e utilidades (`src/lib/`)
 
@@ -38,7 +38,7 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 |---|---|
 | `src/lib/auth.ts` | **Porta de entrada.** `exigirSessao()` confere o login e devolve o `empresaId`. Toda página interna e toda ação que grava dados deve chamar essa função e usar o `empresaId` dela nas consultas. |
 | `src/lib/sessao.ts` | Cria, lê e apaga a sessão (o cookie `sessao` + a linha na tabela Sessao). Login dura 30 dias. O cookie só exige https quando a conexão é https (Vercel); no Mac, em http, funciona normal. |
-| `src/lib/senha.ts` | Embaralha a senha (hash com scrypt) e confere a senha digitada no login. |
+| `src/lib/senha.ts` | Embaralha a senha (scrypt com custo recomendado pela OWASP: N=2^17, r=8, p=1) e confere a senha digitada. Aceita o formato antigo e avisa quando ele precisa ser refeito (`precisaRefazer`). |
 | `src/lib/cobranca.ts` | **A regra de cobrança.** Conta os dias desde o envio (calendário de Brasília), decide a etapa devida (1ª ou 2ª), escolhe o modelo certo (abriu/não abriu), monta a fila de "Cobrar hoje" (`buscarFila`), conta a fila para o aviso (`contarFila`, mesma decisão) e marca como perdido quem passou do prazo. Não há "relógio": roda sempre que o sistema é aberto. |
 | `src/lib/mes.ts` | `mesAtual()`: início e fim do mês atual no horário de Brasília, e o nome ("setembro de 2026"). |
 | `src/lib/status.ts` | Nome e cor de cada status, e quais contam como "esperando o cliente" (enviado, aberto). |
@@ -73,7 +73,7 @@ Padrão de cada tela de cadastro (clientes, catálogo):
 | `src/app/globals.css` | CSS global; é onde o Tailwind é carregado. Modo escuro desligado até a semana 4. Tem as regras de impressão/PDF (folha A4, margens, imprimir cores de fundo). As classes `print:` nas páginas também só valem na impressão. |
 | `src/app/login/page.tsx` | Tela de login (`/login`). Quem já está logado é mandado para `/`. |
 | `src/app/login/form-login.tsx` | O formulário de login (roda no navegador para mostrar erros e o "Entrando..."). |
-| `src/app/login/actions.ts` | Confere email e senha, bloqueia por 15 min após 5 erros seguidos e cria a sessão. |
+| `src/app/login/actions.ts` | Confere email e senha, bloqueia por 15 min após 5 erros seguidos (contagem atômica: tentativas simultâneas não furam o limite), refaz senhas no formato antigo e cria a sessão. |
 | `src/app/(app)/` | Grupo das páginas **internas** (exigem login). Os parênteses não aparecem no endereço. |
 | `src/app/(app)/layout.tsx` | Moldura das páginas internas: confere o login e mostra o nome da empresa, o link Configurações e o botão Sair. |
 | `src/app/(app)/actions.ts` | Ação `sair()`: apaga a sessão e volta para o login. |
