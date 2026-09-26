@@ -37,7 +37,7 @@ Se algo der problema, procure aqui qual arquivo cuida daquilo.
 | Arquivo | O que faz |
 |---|---|
 | `src/lib/auth.ts` | **Porta de entrada.** `exigirSessao()` confere o login e devolve o `empresaId`. Toda página interna e toda ação que grava dados deve chamar essa função e usar o `empresaId` dela nas consultas. |
-| `src/lib/sessao.ts` | Cria, lê e apaga a sessão (o cookie `sessao` + a linha na tabela Sessao). Login dura 30 dias. |
+| `src/lib/sessao.ts` | Cria, lê e apaga a sessão (o cookie `sessao` + a linha na tabela Sessao). Login dura 30 dias. O cookie só exige https quando a conexão é https (Vercel); no Mac, em http, funciona normal. |
 | `src/lib/senha.ts` | Embaralha a senha (hash com scrypt) e confere a senha digitada no login. |
 | `src/lib/cobranca.ts` | **A regra de cobrança.** Conta os dias desde o envio (calendário de Brasília), decide a etapa devida (1ª ou 2ª), escolhe o modelo certo (abriu/não abriu), monta a fila de "Cobrar hoje" (`buscarFila`), conta a fila para o aviso (`contarFila`, mesma decisão) e marca como perdido quem passou do prazo. Não há "relógio": roda sempre que o sistema é aberto. |
 | `src/lib/mes.ts` | `mesAtual()`: início e fim do mês atual no horário de Brasília, e o nome ("setembro de 2026"). |

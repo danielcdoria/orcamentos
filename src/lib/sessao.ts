@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 
 // Como o login continua valendo entre uma página e outra:
@@ -24,10 +24,16 @@ export async function criarSessao(usuarioId: string, empresaId: string) {
     data: { tokenHash: hashToken(token), usuarioId, empresaId, expiraEm },
   });
 
+  // "secure" = o navegador só devolve o cookie por https. Ligamos quando a conexão É https
+  // (na Vercel, sempre). No Mac, com http://localhost, precisa ficar desligado: o Safari
+  // recusa cookie "secure" em http e o login volta para a tela de entrada.
+  const h = await headers();
+  const https = (h.get("x-forwarded-proto") ?? "").split(",")[0].trim() === "https";
+
   const cookieStore = await cookies();
   cookieStore.set(NOME_COOKIE, token, {
     httpOnly: true, // o JavaScript da página não consegue ler o cookie
-    secure: process.env.NODE_ENV === "production", // só por https (no seu Mac é http)
+    secure: https,
     sameSite: "lax", // outros sites não conseguem usar seu login
     expires: expiraEm,
     path: "/",
