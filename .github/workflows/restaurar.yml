@@ -1,0 +1,87 @@
+# RESTAURAR UM BACKUP (só rode quando precisar)
+#
+# Pega um backup guardado pela tarefa "Backup do banco", abre com a senha e grava num banco.
+# O jeito seguro: restaurar num branch NOVO da Neon, conferir, e só então usar.
+#
+# Antes de rodar:
+#   1. Na Neon, crie um branch (ex.: "restaurado") e copie o endereço DIRETO dele (sem -pooler).
+#   2. Coloque esse endereço no secret RESTORE_DATABASE_URL do repositório.
+# Rodar: aba Actions > "Restaurar backup" > Run workflow > nome do backup (ex.: backup-2026-09-27)
+#   ou no terminal: gh workflow run restaurar.yml -f backup=backup-2026-09-27
+#
+# TRAVA: se RESTORE_DATABASE_URL for o banco de PRODUÇÃO, a tarefa se recusa, a não ser que o
+# campo "confirmar" seja exatamente: SUBSTITUIR PRODUCAO
+
+name: Restaurar backup
+
+on:
+  workflow_dispatch:
+    inputs:
+      backup:
+        description: "Nome do backup (ex.: backup-2026-09-27)"
+        required: true
+      confirmar:
+        description: "Só se for escrever por cima da PRODUÇÃO: digite SUBSTITUIR PRODUCAO"
+        required: false
+        default: ""
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  restaurar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Instalar as ferramentas do Postgres 18
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-18 > /dev/null
+
+      - name: Baixar o backup
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BACKUP: ${{ inputs.backup }}
+        run: |
+          set -euo pipefail
+          ID=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=$BACKUP" --jq '.artifacts[0].id // empty')
+          if [ -z "$ID" ]; then echo "Backup '$BACKUP' não encontrado (ou já passou dos 30 dias)."; exit 1; fi
+          gh api "repos/${{ github.repository }}/actions/artifacts/$ID/zip" > backup.zip
+          unzip -o backup.zip && ls -la
+
+      - name: Conferir o destino (trava da produção)
+        env:
+          RESTORE_DATABASE_URL: ${{ secrets.RESTORE_DATABASE_URL }}
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          CONFIRMAR: ${{ inputs.confirmar }}
+        run: |
+          set -euo pipefail
+          if [ -z "$RESTORE_DATABASE_URL" ]; then echo "Falta o secret RESTORE_DATABASE_URL."; exit 1; fi
+          host() { echo "$1" | sed -E 's#.*@([^/:?]+).*#\1#'; }
+          if [ "$(host "$RESTORE_DATABASE_URL")" = "$(host "$BACKUP_DATABASE_URL")" ] && [ "$CONFIRMAR" != "SUBSTITUIR PRODUCAO" ]; then
+            echo "O destino é o banco de PRODUÇÃO. Por segurança, restaure num branch novo da Neon."
+            echo "Se tiver certeza, rode de novo com confirmar = SUBSTITUIR PRODUCAO"; exit 1
+          fi
+          echo "Destino: $(host "$RESTORE_DATABASE_URL" | cut -d. -f1)"
+
+      - name: Abrir o backup e restaurar
+        env:
+          RESTORE_DATABASE_URL: ${{ secrets.RESTORE_DATABASE_URL }}
+          BACKUP_SENHA: ${{ secrets.BACKUP_SENHA }}
+          BACKUP: ${{ inputs.backup }}
+        run: |
+          set -euo pipefail
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -md sha256 \
+            -pass env:BACKUP_SENHA -in "$BACKUP.dump.enc" -out backup.dump
+          URL="$RESTORE_DATABASE_URL"
+          case "$URL" in *sslrootcert=*) ;; *) URL="$URL&sslrootcert=system" ;; esac
+          PG=/usr/lib/postgresql/18/bin
+          # --clean --if-exists: apaga e recria as tabelas do destino com o conteúdo do backup
+          $PG/pg_restore --clean --if-exists --no-owner --no-privileges --dbname="$URL" backup.dump
+          rm backup.dump
+          echo "Contagem depois de restaurar:"
+          $PG/psql "$URL" -At -c 'select (select count(*) from "Empresa") as empresas, (select count(*) from "Orcamento") as orcamentos, (select count(*) from "Cliente") as clientes'

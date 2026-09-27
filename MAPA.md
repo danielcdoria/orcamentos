@@ -44,6 +44,24 @@ pendentes (script `vercel-build`). Não há nada para fazer à mão.
   cliente pagante, mudar para o **Pro** (US$ 20/mês).
 - Região: São Paulo (`gru1`, em `vercel.json`), perto do banco.
 
+### Backup (automático)
+
+Todo dia às 03:00 de Brasília, o GitHub copia o banco **de produção** inteiro, confere a cópia,
+**tranca com a senha de backup** e guarda por **30 dias** (aba *Actions* do repositório >
+"Backup do banco" > uma execução > *Artifacts*). Arquivos: `.github/workflows/backup.yml`.
+
+- **Secrets no GitHub** (Settings > Secrets and variables > Actions): `BACKUP_DATABASE_URL` (o
+  `DIRECT_URL` da produção), `BACKUP_SENHA` (a senha que tranca; **sem ela o backup não abre**,
+  guarde num gerenciador de senhas) e `RESTORE_DATABASE_URL` (destino de uma restauração).
+- **Rodar um backup na hora:** `gh workflow run backup.yml`
+- **Restaurar:** 1) na Neon, crie um branch novo e ponha o endereço direto dele em
+  `RESTORE_DATABASE_URL`; 2) `gh workflow run restaurar.yml -f backup=backup-AAAA-MM-DD`;
+  3) confira os dados nesse branch; 4) se estiver certo, troque as variáveis da Vercel para ele
+  (ou peça ajuda). A tarefa **se recusa a escrever por cima da produção** sem a confirmação
+  `SUBSTITUIR PRODUCAO`.
+- **Abrir um backup no Mac** (depois de baixar o `.dump.enc`):
+  `openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -md sha256 -in backup-AAAA-MM-DD.dump.enc -out backup.dump`
+
 ### Os dois bancos (Neon)
 
 | Branch na Neon | Quem usa | Arquivo com o endereço |
@@ -207,6 +225,8 @@ e entra na cobrança e no valor parado.
 | `prisma.config.ts` | Diz ao Prisma onde estão o schema e as migrations, e que ele usa `DIRECT_URL`. |
 | `next.config.ts` | Cabeçalhos de proteção em todas as páginas (anti-moldura, nosniff, referrer), acesso pela rede de casa no `npm run dev` e raiz do projeto. |
 | `vercel.json` | Roda o site em São Paulo (`gru1`). |
+| `.github/workflows/backup.yml` | Tarefa do GitHub que faz o backup diário trancado do banco de produção (seção 1). |
+| `.github/workflows/restaurar.yml` | Tarefa do GitHub para restaurar um backup num banco (com trava contra escrever por cima da produção). |
 | `tsconfig.json` | Configuração do TypeScript (o atalho `@/` aponta para `src/`). |
 | `eslint.config.mjs` | Regras do `npm run lint`. |
 | `postcss.config.mjs` | Liga o Tailwind ao CSS. |

@@ -1,0 +1,79 @@
+# BACKUP AUTOMÁTICO DO BANCO DE PRODUÇÃO
+#
+# Todo dia às 03:00 de Brasília (06:00 UTC), o GitHub:
+#   1. copia o banco real inteiro (pg_dump);
+#   2. confere se a cópia está legível;
+#   3. tranca o arquivo com a senha de backup (AES-256), para ninguém mais conseguir abrir;
+#   4. guarda a cópia por 30 dias (aba "Actions" do repositório > execução > "Artifacts").
+#
+# Precisa de dois "secrets" no repositório (Settings > Secrets and variables > Actions):
+#   BACKUP_DATABASE_URL  = o DIRECT_URL do banco de PRODUÇÃO (está no .env.producao)
+#   BACKUP_SENHA         = a senha que tranca os backups (sem ela o backup NÃO abre)
+#
+# Para rodar na hora (sem esperar a madrugada): aba Actions > "Backup do banco" > Run workflow,
+# ou no terminal: gh workflow run backup.yml
+# Como restaurar: tarefa "Restaurar backup" (restaurar.yml) e a seção "Backup" do MAPA.md.
+
+name: Backup do banco
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Instalar o pg_dump da mesma versão do banco (Postgres 18)
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-18 > /dev/null
+          /usr/lib/postgresql/18/bin/pg_dump --version
+
+      - name: Copiar, conferir e trancar
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_SENHA: ${{ secrets.BACKUP_SENHA }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BACKUP_DATABASE_URL" ] || [ -z "$BACKUP_SENHA" ]; then
+            echo "Faltam os secrets BACKUP_DATABASE_URL e/ou BACKUP_SENHA no repositório."; exit 1
+          fi
+          # sslmode=verify-full precisa saber onde estão os certificados: usa os do sistema
+          URL="$BACKUP_DATABASE_URL"
+          case "$URL" in *sslrootcert=*) ;; *) URL="$URL&sslrootcert=system" ;; esac
+
+          NOME="backup-$(date -u +%Y-%m-%d)"
+          PG=/usr/lib/postgresql/18/bin
+          $PG/pg_dump "$URL" --format=custom --no-owner --no-privileges --file="$NOME.dump"
+
+          # Confere se a cópia é legível e tem as tabelas principais
+          TABELAS=$($PG/pg_restore --list "$NOME.dump" | grep -c " TABLE DATA ")
+          echo "Tabelas com dados na cópia: $TABELAS"
+          for t in Empresa Usuario Cliente Item Orcamento OrcamentoItem Cobranca; do
+            $PG/pg_restore --list "$NOME.dump" | grep -q "TABLE DATA public \"$t\"" || { echo "Faltou a tabela $t"; exit 1; }
+          done
+
+          # Tranca com a senha (AES-256) e apaga a cópia aberta.
+          # (openssl com parâmetros explícitos: o mesmo comando abre o arquivo no Mac)
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -md sha256 -salt \
+            -pass env:BACKUP_SENHA -in "$NOME.dump" -out "$NOME.dump.enc"
+          rm "$NOME.dump"
+          ls -la "$NOME.dump.enc"
+          echo "NOME=$NOME" >> "$GITHUB_ENV"
+
+      - name: Guardar por 30 dias
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NOME }}
+          path: ${{ env.NOME }}.dump.enc
+          retention-days: 30
+          if-no-files-found: error
