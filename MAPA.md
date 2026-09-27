@@ -27,6 +27,7 @@ cada uma com o seu login, e uma nunca vê os dados da outra.
 | `npm run criar-empresa:producao` | **Cadastra um cliente pagante** (empresa + login) no banco real. É o único jeito de criar contas. |
 | `npm run criar-empresa` | O mesmo, no banco de testes. |
 | `npm run demo:producao` / `npm run demo` | Recria a "Oficina Silva" de demonstração (banco real / de testes). Só apaga a Oficina Silva. |
+| `npm run teste:isolamento` | **Teste de vazamento entre empresas** (com o `npm run dev` ligado). Rode sempre que mexer em telas ou ações. Tem que terminar com "Nenhum vazamento encontrado". |
 
 > ⚠️ `npm start` **não** é para o dia a dia: ele roda a última versão empacotada (antiga) e,
 > no Mac, o login não funciona com ele. Use `npm run dev`.
@@ -63,6 +64,9 @@ Os dois contêm a senha do banco: **nunca vão para o git nem para conversas.**
 
 ## 2. Regras que não podem ser quebradas
 
+Todas as empresas ficam **no mesmo banco**; a separação entre elas é feita pelo `empresaId` em
+cada registro. Por isso estas regras são tão importantes.
+
 1. **O `empresaId` vem sempre do login, nunca do formulário ou do endereço.** Toda página e
    toda ação começa com `const { empresaId } = await exigirSessao()` (`src/lib/auth.ts`) e toda
    consulta ao banco filtra por esse `empresaId`. É isso que impede uma empresa de ver os dados
@@ -80,7 +84,9 @@ Os dois contêm a senha do banco: **nunca vão para o git nem para conversas.**
    escreve o texto; quem toca em "Enviar" é a pessoa, pelo link `wa.me`.
 6. **Mudança no banco é sempre pelo Prisma:** edite `prisma/schema.prisma` e rode
    `npx prisma migrate dev --name ...`. Nunca altere tabelas pelo painel da Neon.
-7. **Senhas nunca são guardadas**, só o hash (`src/lib/senha.ts`). E o `.env`/`.env.producao`
+7. **Mexeu em tela ou ação? Rode `npm run teste:isolamento`.** Ele confere que nenhuma empresa
+   consegue ver ou alterar dados de outra.
+8. **Senhas nunca são guardadas**, só o hash (`src/lib/senha.ts`). E o `.env`/`.env.producao`
    nunca são compartilhados.
 
 ---
@@ -318,6 +324,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `criar-empresa.ts` | Cadastra empresa + login (`npm run criar-empresa` / `:producao`). |
 | `demo-oficina.ts` | Recria a Oficina Silva de demonstração: 12 clientes, 25 itens, 18 orçamentos com datas a partir de hoje, 3 para cobrar hoje (`npm run demo` / `:producao`). |
 | `demo/logo-oficina-silva.png` | Logo da Oficina Silva. |
+| `teste-isolamento.ts` | Teste de vazamento: cria as empresas de teste A e B e, logada como A, tenta abrir, listar e alterar dados da B (repetindo chamadas reais trocando o código do registro). Confere no banco que nada da B mudou e apaga as empresas de teste. Usa `puppeteer-core` e o Google Chrome. |
 
 ---
 
