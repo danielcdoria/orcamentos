@@ -27,6 +27,7 @@ cada uma com o seu login, e uma nunca vê os dados da outra.
 | `npm run criar-empresa:producao` | **Cadastra um cliente pagante** (empresa + login) no banco real. É o único jeito de criar contas. |
 | `npm run criar-empresa` | O mesmo, no banco de testes. |
 | `npm run demo:producao` / `npm run demo` | Recria a "Oficina Silva" de demonstração (banco real / de testes). Só apaga a Oficina Silva. |
+| `npm run demo:marcenaria:producao` / `npm run demo:marcenaria` | Recria a "Madeira Nobre" (marcenaria de móveis sob medida e montagem) de demonstração. Só apaga a Madeira Nobre. |
 | `npm run teste:isolamento` | **Teste de vazamento entre empresas** (com o `npm run dev` ligado). Rode sempre que mexer em telas ou ações. Tem que terminar com "Nenhum vazamento encontrado". |
 
 > ⚠️ `npm start` **não** é para o dia a dia: ele roda a última versão empacotada (antiga) e,
@@ -342,8 +343,10 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | Arquivo | O que faz |
 |---|---|
 | `criar-empresa.ts` | Cadastra empresa + login (`npm run criar-empresa` / `:producao`). |
-| `demo-oficina.ts` | Recria a Oficina Silva de demonstração: 12 clientes, 25 itens, 18 orçamentos com datas a partir de hoje, 3 para cobrar hoje (`npm run demo` / `:producao`). |
-| `demo/logo-oficina-silva.png` | Logo da Oficina Silva. |
+| `demo/motor.ts` | O "motor" das demonstrações: recebe os dados de uma empresa fictícia e cria tudo (logo, catálogo, clientes, orçamentos com datas a partir de hoje, 3 para cobrar hoje). Para criar uma demo de outro ramo, copie um `demo-*.ts` e troque só os dados. |
+| `demo-oficina.ts` | Dados da Oficina Silva: 12 clientes, 25 itens, 18 orçamentos (`npm run demo` / `:producao`). |
+| `demo-marcenaria.ts` | Dados da Madeira Nobre, marcenaria de móveis sob medida e montagem: 12 clientes, 25 itens, 18 orçamentos (`npm run demo:marcenaria` / `:producao`). Login `demo@madeiranobre.com.br`. |
+| `demo/logo-oficina-silva.png`, `demo/logo-madeira-nobre.png` | Logos das empresas de demonstração. |
 | `teste-isolamento.ts` | Teste de vazamento: cria as empresas de teste A e B e, logada como A, tenta abrir, listar e alterar dados da B (repetindo chamadas reais trocando o código do registro). Confere no banco que nada da B mudou e apaga as empresas de teste. Usa `puppeteer-core` e o Google Chrome. |
 
 ---
