@@ -67,6 +67,8 @@ export type ItemFila = {
   abriu: boolean;
   etapa: 1 | 2;
   mensagem: string; // já montada a partir do modelo certo
+  // O cliente mexeu nas opções do orçamento (e não respondeu): sinal de dúvida de preço
+  mexeuNasOpcoes: { vezes: number; dias: number; resumo: string } | null;
 };
 
 // Quem está com cobrança devida hoje (a decisão, sem montar mensagens).
@@ -80,6 +82,8 @@ async function orcamentosDevidos(empresaId: string) {
     include: {
       cliente: { select: { nome: true, telefone: true } },
       cobrancas: { select: { etapa: true } },
+      escolhas: { orderBy: { criadaEm: "desc" }, take: 1, select: { criadaEm: true, resumo: true } },
+      _count: { select: { escolhas: true } },
     },
   });
 
@@ -122,6 +126,9 @@ export async function buscarFila(
       dias,
       abriu,
       etapa,
+      mexeuNasOpcoes: o.escolhas[0]
+        ? { vezes: o._count.escolhas, dias: diasDesde(o.escolhas[0].criadaEm), resumo: o.escolhas[0].resumo }
+        : null,
       mensagem: montarMensagem(modelo, {
         cliente: o.cliente.nome,
         empresa: empresa.nome,

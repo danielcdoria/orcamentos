@@ -15,7 +15,11 @@ export const CAMPOS_ITEM_PUBLICO = {
   quantidade: true,
   precoUnitario: true,
   subtotal: true,
+  tipo: true, // fixo, opção ou adicional
+  grupo: true, // nome do grupo de escolha (ex.: "Material")
+  incluido: true, // o que está escolhido agora (entra no total)
   // custoUnitario: NÃO (interno)
+  // padrao: NÃO (não é preciso: o cliente vê o que está escolhido agora, em "incluido")
 } satisfies Prisma.OrcamentoItemSelect;
 
 export const CAMPOS_ORCAMENTO_PUBLICO = {

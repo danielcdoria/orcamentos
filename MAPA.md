@@ -106,6 +106,8 @@ cada registro. Por isso estas regras são tão importantes.
 7. **Custo, lucro e margem são internos.** A página pública e o PDF só leem os campos de
    `src/lib/publico.ts`. Nunca troque aquele `select` por `include`, e nunca coloque custo lá.
    O `npm run teste:isolamento` confere isso (procura o custo no HTML e dentro do PDF).
+   Os itens que vão para os componentes do navegador na página pública (`ItemEscolha`, em
+   `escolha.tsx`) são montados campo por campo, também sem custo.
 8. **Mexeu em tela ou ação? Rode `npm run teste:isolamento`.** Ele confere que nenhuma empresa
    consegue ver ou alterar dados de outra.
 9. **Senhas nunca são guardadas**, só o hash (`src/lib/senha.ts`). E o `.env`/`.env.producao`
@@ -125,6 +127,7 @@ cada registro. Por isso estas regras são tão importantes.
                                                                ▼
                                           3. Abre /orcamento/<token>
                                              registrarAbertura (status "aberto")
+                                             escolhe opções ─► salvarEscolha (total muda)
                                              pode baixar o PDF (/orcamento/<token>/pdf)
  4. Cobrar hoje ◄── buscarFila (dias desde o envio, abriu ou não)
     Enviar cobrança ─► registrarCobranca  |  Já respondeu ─► status "respondido"
@@ -138,9 +141,15 @@ cada registro. Por isso estas regras são tão importantes.
    itens do catálogo, ajusta quantidade e preço, e vê o total mudar na hora
    (`calcularSubtotal` em `src/lib/dinheiro.ts`). Cliente novo? O link "Cliente novo? Cadastrar"
    vai para `/clientes/novo?voltar=orcamento` e volta com o cliente já escolhido.
+   Cada item tem um **tipo**: Fixo (sempre entra), Opção (de um grupo, ex.: "Material"; o
+   cliente escolhe 1, e uma delas é a "padrão") ou Adicional (o cliente marca se quiser). As
+   regras de grupo, padrão e total ficam em `src/lib/opcoes.ts`.
 3. Ao salvar, chama `salvarOrcamento` (`src/app/(app)/orcamentos/actions.ts`), que:
    - confere o login e que o cliente é **desta** empresa;
    - valida e **recalcula** cada subtotal e o total, em centavos;
+   - com opções: cada grupo precisa de 2+ opções e fica com 1 padrão; o total começa com os
+     fixos + a padrão de cada grupo (adicionais desmarcados). O limite de valor vale para o
+     total mais caro que o cliente conseguir montar;
    - numa transação, pega o maior número da empresa e soma 1 (nº 1, 2, 3...);
    - define a validade (hoje + `diasValidade` da empresa);
    - grava o `Orcamento` e os `OrcamentoItem`. Os itens guardam uma **cópia** da descrição e
@@ -171,6 +180,16 @@ cada registro. Por isso estas regras são tão importantes.
    logo ou imagem neutra) e pede ao Google para não indexar.
 5. "Baixar PDF" chama `/orcamento/[token]/pdf` (`pdf/route.ts`), que monta o PDF no servidor
    (`pdf/documento-pdf.tsx`) e devolve o arquivo para download.
+6. **Orçamento com opções:** a página mostra os fixos, depois os grupos (botões de escolha
+   única) e os adicionais (caixas de marcar); o total muda na hora (`escolha.tsx`, no
+   navegador). Um segundo depois da última mudança, `salvarEscolha`
+   (`src/app/orcamento/[token]/actions.ts`, **pública, sem login**) grava: marca os itens
+   escolhidos (`incluido`), atualiza o `total` do orçamento e registra uma `EscolhaCliente`
+   (o que ficou escolhido e quando). A ação só confia no token, só mexe em itens daquele
+   orçamento, exige 1 opção por grupo, **não salva** quando é a própria empresa logada
+   conferindo ("Ver como o cliente vê") e não aceita troca em orçamento **fechado**.
+   O "Responder no WhatsApp" já leva a escolha no texto, e o PDF sai com a escolha atual
+   (e lista as outras opções embaixo).
 
 ### Passo 4: a cobrança
 1. Toda tela interna (`src/app/(app)/layout.tsx`) chama `contarFila` para mostrar a bolinha
@@ -180,7 +199,9 @@ cada registro. Por isso estas regras são tão importantes.
 2. `/cobrar` chama `buscarFila` (`src/lib/cobranca.ts`), que para cada orçamento **enviado ou
    aberto**: conta os dias de calendário (Brasília) desde `enviadoEm`, decide a etapa devida (1ª
    ou 2ª, conforme os prazos dos Ajustes e as cobranças já feitas), escolhe o modelo de texto
-   (viu / não viu) e monta a mensagem.
+   (viu / não viu) e monta a mensagem. Se o cliente **mexeu nas opções** (tem `EscolhaCliente`),
+   o cartão mostra "Mexeu nas opções": sinal de dúvida de preço. A tela do orçamento mostra o
+   mesmo sinal, a escolha atual, o total que você propôs e cada troca no histórico.
 3. Cada cartão (`cartao-cobranca.tsx`) tem a mensagem editável e dois botões:
    - "Enviar no WhatsApp" abre o `wa.me` e chama `registrarCobranca`, que grava uma `Cobranca`
      (a etapa e o texto final). Assim aquela etapa não aparece de novo;
@@ -204,8 +225,9 @@ e os enviados, fechados e a taxa de fechamento **entre os enviados no mês atual
 | `Sessao` | Cada login aberto (um celular, um computador). Guarda o hash do código do cookie. Dura 30 dias. |
 | `Cliente` | Os clientes da empresa: nome, telefone, observação. |
 | `Item` | O catálogo: descrição, preço (centavos), unidade e **custo padrão** (opcional, interno). |
-| `Orcamento` | Número, cliente, total (centavos), observação, validade, status, token do link, datas de envio/abertura, vezes aberto. |
-| `OrcamentoItem` | As linhas do orçamento: cópia da descrição e do preço, quantidade (aceita 2,5), subtotal e **custo por unidade** (opcional, interno: nunca vai para o cliente). |
+| `Orcamento` | Número, cliente, total (centavos; soma dos itens **incluídos**, muda quando o cliente troca uma opção), observação, validade, status, token do link, datas de envio/abertura, vezes aberto. |
+| `OrcamentoItem` | As linhas do orçamento: cópia da descrição e do preço, quantidade (aceita 2,5), subtotal, **custo por unidade** (opcional, interno: nunca vai para o cliente) e as opções: `tipo` (fixo, opcao, adicional), `grupo`, `padrao` e `incluido` (está no total agora). Orçamentos antigos: tudo fixo e incluído. |
+| `EscolhaCliente` | Cada vez que o cliente mudou as opções na página: resumo da escolha, total e quando. Máximo de 100 por orçamento. |
 | `Cobranca` | Cada cobrança enviada: etapa (1 ou 2) e o texto. Uma por etapa por orçamento. |
 
 **Status do orçamento:** `rascunho` → `enviado` (tocou em Enviar) → `aberto` (cliente viu,
@@ -263,6 +285,7 @@ Pastas geradas (fora do git, não se edita): `node_modules/` (bibliotecas, recri
 | `cobranca.ts` | **A regra de cobrança** (passo 4): dias desde o envio, etapa devida, fila do dia, contagem para a bolinha, perdidos automáticos. |
 | `abertura.ts` | Decide se uma visita ao link conta como abertura e grava a abertura (passo 3). |
 | `margem.ts` | Custo total, lucro e margem de um orçamento (margem = lucro ÷ venda) e a faixa de cor (verde > 30%, amarelo 15–30%, vermelho < 15%). Interno. |
+| `opcoes.ts` | **Opções que o cliente escolhe**: separa fixos, grupos e adicionais, define a padrão de cada grupo, soma o total e escreve o resumo ("Material: MDF comum · + LED"). Roda no servidor e no navegador. |
 | `publico.ts` | **O que pode ir para o cliente final**: os únicos campos que a página pública e o PDF pedem ao banco. O custo não está aqui, por isso nem sai do banco nesses caminhos. |
 | `mes.ts` | Início, fim e nome do mês atual em Brasília (para o painel). |
 | `url.ts` | `urlBase()`: endereço do site para montar links. No `npm run dev`, troca `localhost` pelo IP do Mac na rede. |
@@ -305,8 +328,8 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `actions.ts` | `sair`: apaga a sessão. |
 | `orcamentos/page.tsx` | Lista de orçamentos (mais recentes primeiro), faixa de cobrança pendente, pílula de status e "Viu / Não viu". |
 | `orcamentos/novo/page.tsx` | Tela de novo orçamento (explica o que falta se não houver cliente ou catálogo). |
-| `orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento com total ao vivo (passo 1). |
-| `orcamentos/[id]/page.tsx` | Um orçamento: total, envio, "Ver como o cliente vê", PDF, itens, observação e histórico. |
+| `orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento com total ao vivo (passo 1): custo, tipo do item (Fixo / Opção / Adicional), grupo e padrão. |
+| `orcamentos/[id]/page.tsx` | Um orçamento: total, escolha do cliente (e o sinal "mexeu nas opções"), margem, envio, "Ver como o cliente vê", PDF, itens (por grupo), observação e histórico. |
 | `orcamentos/[id]/botoes-envio.tsx` | "Enviar no WhatsApp" e "Copiar link do orçamento". |
 | `orcamentos/actions.ts` | `salvarOrcamento`, `marcarEnviado`, `alterarStatus`. |
 | `cobrar/page.tsx` | **Cobrar hoje**, a tela principal do produto (passo 4). |
@@ -334,6 +357,9 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 |---|---|
 | `src/app/orcamento/[token]/page.tsx` | A página que o cliente final abre (passo 3): documento com logo, dados, itens, total, condições, "Responder no WhatsApp" (se a empresa tem celular) e "Baixar PDF". |
 | `src/app/orcamento/[token]/botao-pdf.tsx` | O botão "Baixar PDF". |
+| `src/app/orcamento/[token]/escolha.tsx` | Orçamento com opções, no navegador: guarda a escolha, mostra grupos e adicionais com botões grandes, o total ao vivo, o aviso "Sua escolha foi salva" e os botões WhatsApp/PDF que salvam antes de sair. |
+| `src/app/orcamento/[token]/actions.ts` | `salvarEscolha`: a ação **pública** que grava a escolha do cliente (ver passo 3, item 6). |
+| `src/app/orcamento/[token]/blocos.tsx` | Peças usadas nos dois modos da página: caixa do total e botão "Responder no WhatsApp". |
 | `src/app/orcamento/[token]/not-found.tsx` | Mensagem para o cliente quando o link está errado (sem caminho para o login). |
 | `src/app/orcamento/[token]/pdf/route.ts` | Gera e devolve o PDF (`orcamento-14-oficina-silva.pdf`). |
 | `src/app/orcamento/[token]/pdf/documento-pdf.tsx` | O desenho do PDF em A4 (biblioteca `@react-pdf/renderer`, não é HTML; só aceita logo PNG/JPG). |
@@ -349,11 +375,11 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | Arquivo | O que faz |
 |---|---|
 | `criar-empresa.ts` | Cadastra empresa + login (`npm run criar-empresa` / `:producao`). |
-| `demo/motor.ts` | O "motor" das demonstrações: recebe os dados de uma empresa fictícia e cria tudo (logo, catálogo, clientes, orçamentos com datas a partir de hoje, 3 para cobrar hoje). Para criar uma demo de outro ramo, copie um `demo-*.ts` e troque só os dados. |
+| `demo/motor.ts` | O "motor" das demonstrações: recebe os dados de uma empresa fictícia e cria tudo (logo, catálogo, clientes, orçamentos com datas a partir de hoje, 3 para cobrar hoje; aceita orçamentos com opções e o histórico de escolhas do cliente). Para criar uma demo de outro ramo, copie um `demo-*.ts` e troque só os dados. |
 | `demo-oficina.ts` | Dados da Oficina Silva: 12 clientes, 25 itens, 18 orçamentos (`npm run demo` / `:producao`). |
-| `demo-marcenaria.ts` | Dados da Madeira Nobre, marcenaria de móveis sob medida e montagem: 12 clientes, 25 itens, 18 orçamentos (`npm run demo:marcenaria` / `:producao`). Login `demo@madeiranobre.com.br`. |
+| `demo-marcenaria.ts` | Dados da Madeira Nobre, marcenaria de móveis sob medida e montagem: 12 clientes, 30 itens, 18 orçamentos, um deles com opções (Thiago: o cliente escolhe o material) (`npm run demo:marcenaria` / `:producao`). Login `demo@madeiranobre.com.br`. |
 | `demo/logo-oficina-silva.png`, `demo/logo-madeira-nobre.png` | Logos das empresas de demonstração. |
-| `teste-isolamento.ts` | Teste de vazamento: cria as empresas de teste A e B e, logada como A, tenta abrir, listar e alterar dados da B (repetindo chamadas reais trocando o código do registro). Confere no banco que nada da B mudou. Também confere que o **custo** não aparece na página pública nem no PDF. Apaga as empresas de teste no fim. Usa `puppeteer-core` e o Google Chrome. |
+| `teste-isolamento.ts` | Teste de vazamento: cria as empresas de teste A e B e, logada como A, tenta abrir, listar e alterar dados da B (repetindo chamadas reais trocando o código do registro). Confere no banco que nada da B mudou. Também confere que o **custo** não aparece na página pública nem no PDF (com e sem opções), e ataca a escolha de opções (itens de outro orçamento, escolha inválida, prévia do dono, orçamento fechado). Apaga as empresas de teste no fim. Usa `puppeteer-core` e o Google Chrome. |
 
 ---
 
@@ -365,6 +391,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | Mudar cores, botões, tamanhos | `src/app/globals.css` (cor `marca`) e `src/components/estilos.ts` |
 | Mudar os textos padrão das mensagens | Empresas novas: `@default(...)` em `prisma/schema.prisma` (+ migration). Empresas existentes: tela Ajustes de cada uma. |
 | Mudar a regra de cobrança | `src/lib/cobranca.ts` (os prazos em si ficam nos Ajustes de cada empresa) |
+| Mudar como funcionam as opções (grupo, padrão, total) | `src/lib/opcoes.ts`; a tela do cliente em `src/app/orcamento/[token]/escolha.tsx` |
 | Mudar o que conta como "cliente abriu" | `src/lib/abertura.ts` |
 | Mudar a página que o cliente vê | `src/app/orcamento/[token]/page.tsx` (e o PDF em `pdf/documento-pdf.tsx`, para ficarem iguais) |
 | Adicionar um campo ao orçamento | `schema.prisma` + migration → `orcamentos/actions.ts` → `form-orcamento.tsx` → telas `orcamentos/[id]`, página pública e PDF |

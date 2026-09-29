@@ -7,6 +7,9 @@
 //   3. Ações: faz uma ação real na A (mudar status, salvar cliente...), captura a chamada
 //      que o navegador mandou ao servidor e REPETE a mesma chamada trocando o código do
 //      registro da A pelo da B. Depois confere no banco que a B ficou intacta.
+//   4-5. Página pública e PDF: não mostram custo, lucro nem margem.
+//   6. Opções que o cliente escolhe (ação pública, sem login): só mexe no orçamento do link,
+//      não aceita escolha inválida, não salva a "prévia" do dono e trava orçamento fechado.
 // No fim, apaga as duas empresas de teste.
 //
 // Uso: com o "npm run dev" ligado, em outro terminal:  npm run teste:isolamento
@@ -82,6 +85,33 @@ async function criarEmpresa(letra: "A" | "B") {
   const rascunho = await orcamento(1, null);
   const enviado = await orcamento(2, 3); // enviado há 3 dias: aparece em "Cobrar hoje"
 
+  // Orçamento com opções: fixo 100 + grupo Material (padrão 1.000 | outra 2.000) + adicional 500.
+  // Todos com custo "secreto" gravado, para conferir que ele não vaza.
+  const linha = (descricao: string, subtotal: number, extra: object) => ({
+    empresaId: e.id, descricao: `${descricao}-${letra}`, quantidade: "1", precoUnitario: subtotal, subtotal, custoUnitario: 424242, ...extra,
+  });
+  const comOpcoes = await prisma.orcamento.create({
+    data: {
+      empresaId: e.id,
+      clienteId: cliente.id,
+      numero: 3,
+      total: 1100,
+      validoAte: new Date(Date.now() + 15 * dia),
+      status: "enviado",
+      // 2 dias: entra em "Cobrar hoje", mas depois do orçamento nº 2 (3 dias), que os testes 3c/3d usam
+      enviadoEm: new Date(Date.now() - 2 * dia),
+      itens: {
+        create: [
+          linha("FIXO", 100, {}),
+          linha("MDF-COMUM", 1000, { tipo: "opcao", grupo: "Material", padrao: true, incluido: true }),
+          linha("MADEIRA-NOBRE", 2000, { tipo: "opcao", grupo: "Material", incluido: false }),
+          linha("LED", 500, { tipo: "adicional", incluido: false }),
+        ],
+      },
+    },
+    include: { itens: { orderBy: { id: "asc" } } },
+  });
+
   const token = randomBytes(32).toString("base64url");
   await prisma.sessao.create({
     data: {
@@ -91,7 +121,7 @@ async function criarEmpresa(letra: "A" | "B") {
       expiraEm: new Date(Date.now() + 3_600_000),
     },
   });
-  return { empresa: e, cliente, item, itemApagar, rascunho, enviado, sessao: token };
+  return { empresa: e, cliente, item, itemApagar, rascunho, enviado, comOpcoes, sessao: token };
 }
 
 // ---------- ferramentas ----------
@@ -129,6 +159,23 @@ async function repetirComOutroId(page: Page, acao: { url: string; headers: Recor
     async ({ url, headers, corpo }) => (await fetch(url, { method: "POST", headers, body: corpo })).status,
     { url: acao.url, headers, corpo },
   );
+}
+
+// Texto de dentro do PDF. O arquivo guarda o texto compactado e picotado: cada linha vira
+// pedaços em hexadecimal (<4d44...>) separados por ajustes de espaçamento entre letras.
+// Aqui descompacta, junta os pedaços de cada linha e traduz para texto comum.
+async function lerPdf(token: string) {
+  const pdf = Buffer.from(await (await fetch(`${BASE}/orcamento/${token}/pdf`)).arrayBuffer());
+  const { inflateSync } = await import("node:zlib");
+  let bruto = pdf.toString("latin1");
+  for (const m of bruto.matchAll(/stream\r?\n([\s\S]*?)endstream/g)) {
+    try { bruto += inflateSync(Buffer.from(m[1], "latin1")).toString("latin1"); } catch { /* trecho não compactado */ }
+  }
+  const linhas = [...bruto.matchAll(/\[([^\]]*)\]\s*TJ/g)].map((m) =>
+    [...m[1].matchAll(/<([0-9a-fA-F]*)>/g)].map((h) => Buffer.from(h[1], "hex").toString("latin1")).join(""),
+  );
+  const tudo = `${bruto}\n${linhas.join("\n")}\n${linhas.join("")}`.toLowerCase();
+  return (t: string) => tudo.includes(t.toLowerCase());
 }
 
 // ---------- os testes ----------
@@ -266,19 +313,112 @@ async function main() {
       achados.length ? `ACHOU: ${achados.join(", ")}` : `HTTP ${pub.status}`);
   }
 
-  // PDF: descompacta os trechos internos do arquivo e procura em texto e em hexadecimal
-  const pdf = Buffer.from(await (await fetch(`${BASE}/orcamento/${A.rascunho.token}/pdf`)).arrayBuffer());
-  const { inflateSync } = await import("node:zlib");
-  let conteudo = pdf.toString("latin1");
-  for (const m of conteudo.matchAll(/stream\r?\n([\s\S]*?)endstream/g)) {
-    try { conteudo += inflateSync(Buffer.from(m[1], "latin1")).toString("latin1"); } catch { /* trecho não compactado */ }
-  }
-  const hex = (t: string) => Buffer.from(t, "latin1").toString("hex");
-  const noPdf = (t: string) => conteudo.includes(t) || conteudo.toLowerCase().includes(hex(t));
+  // PDF: procura dentro do arquivo (descompactado)
+  const noPdf = await lerPdf(A.rascunho.token);
   const achadosPdf = proibidos.filter(noPdf);
   registrar("PDF não tem custo/lucro/margem",
     noPdf("123,45") && achadosPdf.length === 0, // "123,45" (o preço) PRECISA aparecer: prova que a busca funciona
     achadosPdf.length ? `ACHOU: ${achadosPdf.join(", ")}` : noPdf("123,45") ? "preço encontrado, custo não" : "busca não achou nem o preço");
+
+  // Orçamento com opções: a página e o PDF também não podem ter custo
+  const pubOpcoes = await pagina("", `/orcamento/${A.comOpcoes.token}`);
+  const achadosOpcoes = achar(pubOpcoes.corpo);
+  registrar("Página pública COM OPÇÕES não mostra custo/lucro/margem",
+    pubOpcoes.status === 200 && pubOpcoes.corpo.includes("Escolha uma opção") && pubOpcoes.corpo.includes("MADEIRA-NOBRE-A") && achadosOpcoes.length === 0,
+    achadosOpcoes.length ? `ACHOU: ${achadosOpcoes.join(", ")}` : `HTTP ${pubOpcoes.status}`);
+  const noPdfOpcoes = await lerPdf(A.comOpcoes.token);
+  const achadosPdfOpcoes = proibidos.filter(noPdfOpcoes);
+  registrar("PDF COM OPÇÕES não tem custo/lucro/margem",
+    noPdfOpcoes("MADEIRA-NOBRE-A") && achadosPdfOpcoes.length === 0,
+    achadosPdfOpcoes.length ? `ACHOU: ${achadosPdfOpcoes.join(", ")}` : "");
+
+  // 6) OPÇÕES QUE O CLIENTE ESCOLHE: a ação pública (sem login)
+  const [fixoA, comumA, nobreA, ledA] = A.comOpcoes.itens;
+  const nobreB = B.comOpcoes.itens[2];
+  const estado = async (id: string) => {
+    const o = await prisma.orcamento.findUniqueOrThrow({
+      where: { id },
+      include: { itens: { orderBy: { id: "asc" } }, _count: { select: { escolhas: true } } },
+    });
+    return { total: o.total, incluidos: o.itens.filter((i) => i.incluido).map((i) => i.id).join(","), escolhas: o._count.escolhas };
+  };
+  const browser2 = await puppeteer.launch({ executablePath: CHROME, headless: true });
+  try {
+    // 6a) cliente final (sem login) escolhe "madeira nobre" e marca o LED na página
+    const cliente = await browser2.newPage();
+    await cliente.goto(`${BASE}/orcamento/${A.comOpcoes.token}`, { waitUntil: "networkidle0" });
+    const marcar = (texto: string) =>
+      cliente.evaluate((t) => {
+        const label = [...document.querySelectorAll("label")].find((l) => l.textContent?.includes(t));
+        label?.querySelector("input")?.click();
+      }, texto);
+    const acaoEscolha = await capturarAcao(cliente, async () => {
+      await marcar("MADEIRA-NOBRE-A");
+      await marcar("LED-A");
+    });
+    await cliente.waitForFunction(() => document.body.textContent?.includes("Sua escolha foi salva"), { timeout: 5000 });
+    let a = await estado(A.comOpcoes.id);
+    registrar("Cliente escolhe na página: escolha e total salvos",
+      a.total === 100 + 2000 + 500 && a.incluidos === [fixoA.id, nobreA.id, ledA.id].join(",") && a.escolhas >= 1,
+      `total ${a.total}, trocas registradas ${a.escolhas}`);
+
+    // Repete a chamada da ação com outros dados (como faria um atacante)
+    const chamar = (token: string, marcados: string[]) =>
+      cliente.evaluate(
+        async ({ url, headers, corpo }) => (await fetch(url, { method: "POST", headers, body: corpo })).status,
+        {
+          url: acaoEscolha.url,
+          headers: Object.fromEntries(Object.entries(acaoEscolha.headers).filter(([k]) => !["content-length", "cookie", "host", "origin", "referer"].includes(k))),
+          corpo: JSON.stringify([token, marcados]),
+        },
+      );
+    const antesB = await estado(B.comOpcoes.id);
+
+    // 6b) usa o link da A mas manda itens da B
+    await chamar(A.comOpcoes.token, [nobreB.id]);
+    // 6c) usa o link da B com itens da A
+    await chamar(B.comOpcoes.token, [comumA.id]);
+    // 6d) duas opções do mesmo grupo ao mesmo tempo, e tentar tirar o item fixo
+    await chamar(A.comOpcoes.token, [comumA.id, nobreA.id]);
+    await chamar(A.comOpcoes.token, [comumA.id]); // (o fixo não vem na lista: tem que continuar incluído)
+    a = await estado(A.comOpcoes.id);
+    const b = await estado(B.comOpcoes.id);
+    registrar("Escolha com itens de outro orçamento/empresa é recusada",
+      b.incluidos === antesB.incluidos && b.total === antesB.total && b.escolhas === 0,
+      `B: total ${b.total}, trocas ${b.escolhas}`);
+    registrar("Escolha inválida (2 opções no grupo) recusada e item fixo não sai",
+      a.incluidos.split(",").includes(fixoA.id) && a.incluidos === [fixoA.id, comumA.id].join(",") && a.total === 1100,
+      `A: total ${a.total} (esperado 1100 depois da última escolha válida)`);
+
+    // 6e) o dono logado conferindo ("Ver como o cliente vê"): mexe, mas NÃO salva
+    const dono = await browser2.createBrowserContext();
+    const pDono = await dono.newPage();
+    await dono.setCookie({ name: "sessao", value: A.sessao, domain: new URL(BASE).hostname, path: "/" });
+    await pDono.goto(`${BASE}/orcamento/${A.comOpcoes.token}`, { waitUntil: "networkidle0" });
+    const antesDono = await estado(A.comOpcoes.id);
+    await pDono.evaluate(() => {
+      const label = [...document.querySelectorAll("label")].find((l) => l.textContent?.includes("MADEIRA-NOBRE-A"));
+      label?.querySelector("input")?.click();
+    });
+    await new Promise((r) => setTimeout(r, 2500));
+    const depoisDono = await estado(A.comOpcoes.id);
+    const avisoPrevia = await pDono.evaluate(() => document.body.textContent?.includes("não é salvo") ?? false);
+    registrar("Prévia do dono logado não salva escolha",
+      depoisDono.incluidos === antesDono.incluidos && depoisDono.escolhas === antesDono.escolhas && avisoPrevia);
+
+    // 6f) sinal na cobrança: a A vê "Mexeu nas opções" no Cobrar hoje (a B não vê nada da A)
+    const cobrarA = await pagina(A.sessao, "/cobrar");
+    registrar("Cobrar hoje mostra o sinal “Mexeu nas opções”", cobrarA.corpo.includes("Mexeu nas opções"));
+
+    // 6g) orçamento fechado: a escolha fica travada
+    await prisma.orcamento.update({ where: { id: A.comOpcoes.id }, data: { status: "fechado" } });
+    const antesFechado = await estado(A.comOpcoes.id);
+    await chamar(A.comOpcoes.token, [nobreA.id]);
+    const depoisFechado = await estado(A.comOpcoes.id);
+    registrar("Orçamento fechado não aceita troca de opção", depoisFechado.incluidos === antesFechado.incluidos);
+  } finally {
+    await browser2.close();
+  }
 
   await apagarEmpresasDeTeste();
   const falhas = resultados.filter((x) => !x.ok).length;

@@ -4,13 +4,24 @@ import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { registrarAbertura, visitaContaComoAbertura } from "@/lib/abertura";
 import { prisma } from "@/lib/prisma";
+import { lerSessao } from "@/lib/sessao";
+import { organizar, temOpcoes } from "@/lib/opcoes";
 import { CAMPOS_ORCAMENTO_PUBLICO } from "@/lib/publico";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData, formatarQuantidade } from "@/lib/formatos";
 import { urlBase } from "@/lib/url";
 import { formatarTelefone, telefoneParaWhatsApp } from "@/lib/telefone";
-import { MessageCircle, Phone } from "lucide-react";
+import { Phone } from "lucide-react";
 import { BotaoPdf } from "./botao-pdf";
+import { CaixaTotal, LinkResponder } from "./blocos";
+import {
+  OpcoesDoCliente,
+  PdfComEscolha,
+  ProvedorEscolha,
+  ResponderComEscolha,
+  TotalAoVivo,
+  type ItemEscolha,
+} from "./escolha";
 
 // PÁGINA PÚBLICA do orçamento: /orcamento/<token>
 // Fica FORA da pasta (app), então não exige login. Quem tem o link, vê.
@@ -24,6 +35,7 @@ const buscarOrcamento = cache(async (token: string) => {
     where: { token },
     select: {
       ...CAMPOS_ORCAMENTO_PUBLICO,
+      status: true, // usado só aqui no servidor (orçamento fechado trava as opções); não vai para a tela
       empresa: { select: { nome: true, telefone: true, logoUrl: true, condicaoPagamento: true } },
     },
   });
@@ -80,8 +92,25 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
   const empresaTemCelular = whatsEmpresa !== null && /^55\d{2}9\d{8}$/.test(whatsEmpresa);
   const textoResposta = `Olá! Vi o orçamento nº ${o.numero} (${formatarCentavos(o.total)}).`;
 
-  return (
-    <main className="min-h-dvh bg-gray-100 px-3 py-4 sm:px-6 sm:py-10 print:min-h-0 print:bg-white print:p-0">
+  // Orçamento com opções (itens "opção" ou "adicional"): o cliente escolhe e o total muda
+  // na hora. Sem opções, a página é montada inteira no servidor, como sempre foi.
+  const opcoes = temOpcoes(o.itens);
+  const { fixos } = organizar(o.itens);
+  const previa = opcoes && (await lerSessao())?.empresaId === o.empresaId; // a empresa conferindo
+  // Só os campos que o cliente pode ver, um por um
+  const itensEscolha: ItemEscolha[] = o.itens.map((i) => ({
+    id: i.id,
+    descricao: i.descricao,
+    quantidade: formatarQuantidade(i.quantidade),
+    unitario: i.precoUnitario,
+    subtotal: i.subtotal,
+    tipo: i.tipo,
+    grupo: i.grupo,
+    incluido: i.incluido,
+  }));
+
+  const conteudo = (
+    <>
       <article className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-gray-200 bg-white print:max-w-none print:rounded-none print:border-0">
         {/* Empresa */}
         <header className="flex items-center gap-4 px-5 py-5 sm:px-8 sm:py-6">
@@ -142,49 +171,52 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
           {o.cliente.telefone && <p className="text-base text-gray-600">{formatarTelefone(o.cliente.telefone)}</p>}
         </section>
 
-        {/* Itens: no celular, cada item em duas linhas; a partir de 640px, tabela */}
-        <section className="px-5 pt-6 sm:px-8">
-          <h2 className="sr-only">Itens</h2>
-          <ul className="divide-y divide-gray-200 border-y border-gray-200 sm:hidden">
-            {o.itens.map((item) => (
-              <li key={item.id} className="flex items-start justify-between gap-4 py-3 break-inside-avoid">
-                <div className="min-w-0">
-                  <p className="text-base font-medium">{item.descricao}</p>
-                  <p className="text-base text-gray-600">
-                    {formatarQuantidade(item.quantidade)} × {formatarCentavos(item.precoUnitario)}
-                  </p>
-                </div>
-                <p className="shrink-0 text-base font-semibold tabular-nums">{formatarCentavos(item.subtotal)}</p>
-              </li>
-            ))}
-          </ul>
-          <table className="hidden w-full text-base sm:table">
-            <thead>
-              <tr className="border-b border-gray-300 text-left text-sm text-gray-500">
-                <th className="py-2 font-medium">Descrição</th>
-                <th className="py-2 text-right font-medium">Qtd</th>
-                <th className="py-2 text-right font-medium">Valor unit.</th>
-                <th className="py-2 text-right font-medium">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {o.itens.map((item) => (
-                <tr key={item.id} className="break-inside-avoid">
-                  <td className="py-3 pr-4">{item.descricao}</td>
-                  <td className="py-3 text-right tabular-nums">{formatarQuantidade(item.quantidade)}</td>
-                  <td className="py-3 pl-4 text-right tabular-nums">{formatarCentavos(item.precoUnitario)}</td>
-                  <td className="py-3 pl-4 text-right font-semibold tabular-nums">{formatarCentavos(item.subtotal)}</td>
-                </tr>
+        {/* Itens: no celular, cada item em duas linhas; a partir de 640px, tabela.
+            Com opções, aqui ficam só os itens fixos; as opções vêm logo abaixo. */}
+        {fixos.length > 0 && (
+          <section className="px-5 pt-6 sm:px-8">
+            <h2 className={opcoes ? "mb-2 text-lg font-semibold" : "sr-only"}>{opcoes ? "Já incluído" : "Itens"}</h2>
+            <ul className="divide-y divide-gray-200 border-y border-gray-200 sm:hidden">
+              {fixos.map((item) => (
+                <li key={item.id} className="flex items-start justify-between gap-4 py-3 break-inside-avoid">
+                  <div className="min-w-0">
+                    <p className="text-base font-medium">{item.descricao}</p>
+                    <p className="text-base text-gray-600">
+                      {formatarQuantidade(item.quantidade)} × {formatarCentavos(item.precoUnitario)}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-base font-semibold tabular-nums">{formatarCentavos(item.subtotal)}</p>
+                </li>
               ))}
-            </tbody>
-          </table>
-        </section>
+            </ul>
+            <table className="hidden w-full text-base sm:table">
+              <thead>
+                <tr className="border-b border-gray-300 text-left text-sm text-gray-500">
+                  <th className="py-2 font-medium">Descrição</th>
+                  <th className="py-2 text-right font-medium">Qtd</th>
+                  <th className="py-2 text-right font-medium">Valor unit.</th>
+                  <th className="py-2 text-right font-medium">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {fixos.map((item) => (
+                  <tr key={item.id} className="break-inside-avoid">
+                    <td className="py-3 pr-4">{item.descricao}</td>
+                    <td className="py-3 text-right tabular-nums">{formatarQuantidade(item.quantidade)}</td>
+                    <td className="py-3 pl-4 text-right tabular-nums">{formatarCentavos(item.precoUnitario)}</td>
+                    <td className="py-3 pl-4 text-right font-semibold tabular-nums">{formatarCentavos(item.subtotal)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )}
+
+        {/* Opções que o cliente escolhe (grupos e adicionais) */}
+        {opcoes && <OpcoesDoCliente />}
 
         {/* Total */}
-        <section className="mx-5 mt-5 flex flex-wrap items-center justify-between gap-x-8 gap-y-1 rounded-xl bg-marca px-6 py-5 text-white break-inside-avoid sm:mx-8 sm:ml-auto sm:w-fit sm:min-w-80">
-          <span className="text-lg font-medium">Total</span>
-          <span className="text-3xl font-extrabold tabular-nums">{formatarCentavos(o.total)}</span>
-        </section>
+        {opcoes ? <TotalAoVivo /> : <CaixaTotal valor={o.total} />}
 
         {/* Condições */}
         <section className="flex flex-col gap-4 px-5 py-6 text-base sm:px-8">
@@ -209,17 +241,26 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
 
       {/* Fora do documento: ações do cliente (somem na impressão) */}
       <div className="mx-auto mt-4 flex max-w-2xl flex-col gap-3 print:hidden">
-        {empresaTemCelular && (
-          <a
-            href={`https://wa.me/${whatsEmpresa}?text=${encodeURIComponent(textoResposta)}`}
-            className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-marca px-4 py-3 text-lg font-semibold text-white"
-          >
-            <MessageCircle className="size-5" aria-hidden />
-            Responder no WhatsApp
-          </a>
-        )}
-        <BotaoPdf token={token} />
+        {empresaTemCelular &&
+          (opcoes ? (
+            <ResponderComEscolha whatsEmpresa={whatsEmpresa} numero={o.numero} />
+          ) : (
+            <LinkResponder whatsEmpresa={whatsEmpresa} texto={textoResposta} />
+          ))}
+        {opcoes ? <PdfComEscolha token={token} /> : <BotaoPdf token={token} />}
       </div>
+    </>
+  );
+
+  return (
+    <main className="min-h-dvh bg-gray-100 px-3 py-4 sm:px-6 sm:py-10 print:min-h-0 print:bg-white print:p-0">
+      {opcoes ? (
+        <ProvedorEscolha token={token} itens={itensEscolha} previa={previa} bloqueado={o.status === "fechado"}>
+          {conteudo}
+        </ProvedorEscolha>
+      ) : (
+        conteudo
+      )}
     </main>
   );
 }

@@ -6,13 +6,13 @@
 //
 // Pode rodar quantas vezes quiser: apaga a Madeira Nobre anterior (e só ela) e recria tudo com
 // as datas contadas a partir de hoje. Sempre haverá exatamente 3 orçamentos em "Cobrar hoje":
-// Renata (2ª cobrança, viu), Thiago (1ª, viu) e Cláudia (1ª, não viu).
+// Renata (2ª cobrança, viu), Thiago (1ª, viu e mexeu nas opções) e Cláudia (1ª, não viu).
 // O motor que faz o trabalho está em scripts/demo/motor.ts.
 
 import path from "node:path";
 import { executar, type ConfigDemo, type Plano } from "./demo/motor";
 
-// ---------- catálogo: 25 produtos e serviços de marcenaria (preços em centavos) ----------
+// ---------- catálogo: 30 produtos e serviços de marcenaria (preços em centavos) ----------
 const catalogo: ConfigDemo["catalogo"] = [
   ["Armário de cozinha planejado (MDF)", 145000, "m²"],
   ["Guarda-roupa planejado (MDF 18mm)", 138000, "m²"],
@@ -39,6 +39,12 @@ const catalogo: ConfigDemo["catalogo"] = [
   ["Instalação de móveis planejados", 60000, "diária"],
   ["Desmontagem e remontagem (mudança)", 9000, "h"],
   ["Frete e entrega (Grande Rio)", 15000, "serviço"],
+  // usados no orçamento com opções (Thiago): o cliente escolhe o material
+  ["Projeto e montagem", 80000, "serviço"],
+  ["Guarda-roupa em MDF comum", 320000, "un"],
+  ["Guarda-roupa em MDF resistente à umidade", 410000, "un"],
+  ["Guarda-roupa em madeira nobre", 750000, "un"],
+  ["Iluminação em LED interna", 60000, "un"],
 ];
 
 // ---------- 12 clientes (o ambiente/imóvel vai na observação) ----------
@@ -85,8 +91,21 @@ const planos: Plano[] = [
     itens: [["Rack suspenso sob medida", 1], ["Painel de TV ripado", 2.8]] },
   { cliente: "Sandra Moreira", dias: 5, status: "fechado", abriu: 5, vezes: 2,
     itens: [["Desmontagem e remontagem (mudança)", 6], ["Frete e entrega (Grande Rio)", 1]] },
+  // Orçamento COM OPÇÕES: o cliente escolhe o material e se quer LED. Ele ficou trocando
+  // (madeira nobre -> MDF resistente -> MDF comum) e não respondeu: sinal de dúvida de preço.
   { cliente: "Thiago Martins", dias: 3, status: "aberto", abriu: 2, vezes: 2,
-    itens: [["Guarda-roupa planejado (MDF 18mm)", 4.8], ["Gaveta com corrediça telescópica", 6], ["Porta de correr para armário", 3], ["Projeto 3D do ambiente", 1]],
+    itens: [
+      ["Projeto e montagem", 1],
+      ["Guarda-roupa em MDF comum", 1, { grupo: "Material", padrao: true }],
+      ["Guarda-roupa em MDF resistente à umidade", 1, { grupo: "Material" }],
+      ["Guarda-roupa em madeira nobre", 1, { grupo: "Material" }],
+      ["Iluminação em LED interna", 1, "adicional"],
+    ],
+    escolhas: [
+      [2, 18, 34, ["Guarda-roupa em madeira nobre", "Iluminação em LED interna"]],
+      [2, 18, 41, ["Guarda-roupa em MDF resistente à umidade", "Iluminação em LED interna"]],
+      [1, 21, 12, ["Guarda-roupa em MDF comum", "Iluminação em LED interna"]],
+    ],
     obs: "Quarto da filha. Acabamento branco com detalhes em freijó." },
   { cliente: "Felipe Andrade", dias: 4, status: "respondido", abriu: 3,
     itens: [["Troca de frentes de armário", 2.5], ["Dobradiça com amortecedor", 10]] },

@@ -40,8 +40,10 @@ export type DadosPdf = {
   vencido: boolean;
   empresa: { nome: string; telefone: string; logo: Buffer | null; condicaoPagamento: string | null };
   cliente: { nome: string; telefone: string };
-  itens: { descricao: string; quantidade: string; unitario: string; subtotal: string }[];
+  // detalhe: "Material: opção escolhida" / "Adicional escolhido" (orçamentos com opções)
+  itens: { descricao: string; detalhe: string | null; quantidade: string; unitario: string; subtotal: string }[];
   total: string;
+  outrasOpcoes: string[]; // opções não escolhidas, uma linha por grupo (vazio se não houver)
   observacao: string | null;
 };
 
@@ -94,7 +96,10 @@ export function DocumentoPdf({ d }: { d: DadosPdf }) {
         </View>
         {d.itens.map((item, i) => (
           <View key={i} style={e.tabelaLinha} wrap={false}>
-            <Text style={e.colDesc}>{item.descricao}</Text>
+            <View style={e.colDesc}>
+              <Text>{item.descricao}</Text>
+              {item.detalhe ? <Text style={[e.cinza, { fontSize: 8.5, marginTop: 2 }]}>{item.detalhe}</Text> : null}
+            </View>
             <Text style={e.colQtd}>{item.quantidade}</Text>
             <Text style={e.colUnit}>{item.unitario}</Text>
             <Text style={[e.colTotal, e.forte]}>{item.subtotal}</Text>
@@ -105,6 +110,19 @@ export function DocumentoPdf({ d }: { d: DadosPdf }) {
           <Text>Total</Text>
           <Text style={e.totalValor}>{d.total}</Text>
         </View>
+
+        {/* Opções que o cliente não escolheu (o total acima já considera a escolha) */}
+        {d.outrasOpcoes.length > 0 ? (
+          <View style={e.bloco} wrap={false}>
+            <Text style={e.blocoTitulo}>Outras opções</Text>
+            {d.outrasOpcoes.map((linha, i) => (
+              <Text key={i} style={{ marginTop: i ? 2 : 0 }}>
+                {linha}
+              </Text>
+            ))}
+            <Text style={[e.cinza, { marginTop: 4 }]}>O total considera as opções escolhidas. Para trocar, use o link do orçamento.</Text>
+          </View>
+        ) : null}
 
         {/* Condições */}
         {d.empresa.condicaoPagamento ? (

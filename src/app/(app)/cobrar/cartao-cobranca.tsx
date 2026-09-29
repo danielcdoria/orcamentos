@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Shuffle } from "lucide-react";
 import { marcarRespondido, registrarCobranca } from "./actions";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { telefoneParaWhatsApp } from "@/lib/telefone";
@@ -53,7 +53,22 @@ export function CartaoCobranca({ item }: { item: ItemFila }) {
           <span className="rounded-full px-3 py-1 text-gray-700 ring-1 ring-gray-300">Ainda não viu</span>
         )}
         <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900">{item.etapa}ª cobrança</span>
+        {item.mexeuNasOpcoes && (
+          <span className="flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-amber-900">
+            <Shuffle className="size-4" aria-hidden />
+            Mexeu nas opções
+          </span>
+        )}
       </div>
+
+      {/* Sinal de dúvida de preço: o cliente trocou opções e não respondeu */}
+      {item.mexeuNasOpcoes && (
+        <p className="rounded-xl bg-amber-50 px-3 py-2 text-base text-amber-950">
+          Mexeu nas opções {item.mexeuNasOpcoes.vezes === 1 ? "1 vez" : `${item.mexeuNasOpcoes.vezes} vezes`}
+          {item.mexeuNasOpcoes.dias === 0 ? " (hoje)" : ` (a última ${textoDias(item.mexeuNasOpcoes.dias)})`} e não
+          respondeu: pode ser dúvida de preço. Escolha atual: {item.mexeuNasOpcoes.resumo}.
+        </p>
+      )}
 
       {/* Mensagem pronta, editável */}
       <label className="flex flex-col gap-2">

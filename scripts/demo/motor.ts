@@ -10,8 +10,12 @@ import { createInterface } from "node:readline";
 import { prisma } from "@/lib/prisma";
 import { gerarHashSenha } from "@/lib/senha";
 import { calcularSubtotal } from "@/lib/dinheiro";
+import { resumoEscolha, somarIncluidos } from "@/lib/opcoes";
 import { telefoneParaWhatsApp } from "@/lib/telefone";
 import type { StatusOrcamento } from "@/generated/prisma/enums";
+
+// Item de opção: { grupo: "Material" } (padrao: true na que já vem escolhida) ou "adicional"
+export type OpcaoDemo = { grupo: string; padrao?: true } | "adicional";
 
 export type Plano = {
   cliente: string;
@@ -20,8 +24,10 @@ export type Plano = {
   abriu?: number; // aberto há quantos dias (e quantas vezes: ver vezes)
   vezes?: number;
   cobrancas?: [etapa: 1 | 2, diasAtras: number][];
-  itens: [descricao: string, quantidade: number][];
+  itens: [descricao: string, quantidade: number, opcao?: OpcaoDemo][];
   obs?: string;
+  // o que o cliente escolheu na página, em ordem: quando e quais opções/adicionais marcou
+  escolhas?: [diasAtras: number, hora: number, minuto: number, marcados: string[]][];
 };
 export type ConfigDemo = {
   nome: string;
@@ -128,18 +134,32 @@ export async function rodarDemo(c: ConfigDemo) {
   const porDia = new Map<number, number>();
 
   for (const [i, p] of ordenados.entries()) {
-    const linhas = p.itens.map(([descricao, quantidade]) => {
+    const linhas = p.itens.map(([descricao, quantidade, opcao]) => {
       const item = itens.get(descricao);
       if (!item) throw new Error(`Item não está no catálogo: ${descricao}`);
+      const tipo = !opcao ? "fixo" : opcao === "adicional" ? "adicional" : "opcao";
+      const padrao = typeof opcao === "object" && opcao.padrao === true;
       return {
         empresaId: e,
         descricao,
         quantidade: String(quantidade),
         precoUnitario: item.preco,
         subtotal: calcularSubtotal(quantidade, item.preco),
-      };
+        tipo,
+        grupo: typeof opcao === "object" ? opcao.grupo : null,
+        padrao,
+        incluido: tipo === "fixo" || padrao,
+      } as const;
     });
-    const total = linhas.reduce((s, l) => s + l.subtotal, 0);
+
+    // Escolhas do cliente na página pública: cada uma vira uma linha do histórico, e a
+    // última é a que vale agora (itens marcados e total).
+    const escolhas = (p.escolhas ?? []).map(([d, hora, minuto, marcados]) => {
+      const estado = linhas.map((l) => ({ ...l, incluido: l.tipo === "fixo" || marcados.includes(l.descricao) }));
+      return { estado, resumo: resumoEscolha(estado), total: somarIncluidos(estado), criadaEm: diasAtras(d, hora, minuto) };
+    });
+    const final = escolhas.at(-1)?.estado ?? linhas;
+    const total = somarIncluidos(final);
     const k = porDia.get(p.dias) ?? 0; // quantos já foram criados neste mesmo dia
     porDia.set(p.dias, k + 1);
     const criadoEm =
@@ -164,7 +184,10 @@ export async function rodarDemo(c: ConfigDemo) {
         abertoEm,
         ultimaAberturaEm: abertoEm,
         vezesAberto: abertoEm ? (p.vezes ?? 1) : 0,
-        itens: { create: linhas },
+        itens: { create: final },
+        escolhas: {
+          create: escolhas.map((x) => ({ empresaId: e, resumo: x.resumo, total: x.total, criadaEm: x.criadaEm })),
+        },
         cobrancas: {
           create: (p.cobrancas ?? []).map(([etapa, d]) => ({
             empresaId: e,

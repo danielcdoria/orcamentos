@@ -39,6 +39,7 @@ model Empresa {
   msgCobranca2Abriu    String @default("Oi, {nome}! Queria saber se o orçamento ainda faz sentido pra você. Se o valor ou o prazo não encaixou, me conta que eu vejo o que dá pra fazer. Ele vale até {validade}.")
 
   cobrancas Cobranca[]
+  escolhas  EscolhaCliente[]
 
   logo           EmpresaLogo?
   usuario        Usuario?
@@ -140,7 +141,7 @@ model Orcamento {
   empresaId  String
   clienteId  String
   numero     Int // sequencial por empresa: 1, 2, 3...
-  total      Int // em centavos (soma dos subtotais)
+  total      Int // em centavos: soma dos itens INCLUÍDOS (muda quando o cliente troca uma opção)
   observacao String?
   validoAte  DateTime
   status     StatusOrcamento @default(rascunho)
@@ -161,6 +162,7 @@ model Orcamento {
   cliente   Cliente         @relation(fields: [clienteId], references: [id])
   itens     OrcamentoItem[]
   cobrancas Cobranca[]
+  escolhas  EscolhaCliente[]
 
   @@unique([empresaId, numero]) // duas empresas podem ter o orçamento nº 1, a mesma empresa não
   @@index([empresaId, criadoEm])
@@ -180,10 +182,44 @@ model OrcamentoItem {
   // página pública nem no PDF. Por isso aquelas telas pedem ao banco só os campos que mostram.
   custoUnitario Int?
 
+  // OPÇÕES QUE O CLIENTE ESCOLHE (ver TipoItem). Orçamentos antigos: tudo "fixo" e incluído.
+  tipo     TipoItem @default(fixo)
+  grupo    String? // só para "opcao": o nome do grupo de escolha, ex.: "Material"
+  padrao   Boolean  @default(false) // "opcao": a que a empresa deixou marcada no grupo
+  // Entra no total AGORA? fixo: sempre. opcao: a escolhida no grupo (começa pela padrão).
+  // adicional: se o cliente marcou (começa desmarcado). Muda quando o cliente escolhe.
+  incluido Boolean  @default(true)
+
   empresa   Empresa   @relation(fields: [empresaId], references: [id])
   orcamento Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
 
   @@index([orcamentoId])
+}
+
+// fixo      -> sempre incluído (o comportamento de sempre)
+// opcao     -> faz parte de um grupo (ex.: "Material"); o cliente escolhe UM do grupo
+// adicional -> o cliente marca ou desmarca à vontade
+enum TipoItem {
+  fixo
+  opcao
+  adicional
+}
+
+// Cada vez que o cliente muda as opções na página pública, uma linha aqui: o que ficou
+// escolhido e quando. Serve para a empresa ver a escolha e se o cliente ficou trocando
+// (sinal de dúvida de preço, mostrado na cobrança).
+model EscolhaCliente {
+  id          String   @id @default(cuid())
+  empresaId   String
+  orcamentoId String
+  resumo      String // ex.: "Material: Madeira nobre · + Iluminação em LED interna"
+  total       Int // total com esta escolha, em centavos
+  criadaEm    DateTime @default(now())
+
+  empresa   Empresa   @relation(fields: [empresaId], references: [id])
+  orcamento Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+
+  @@index([orcamentoId, criadaEm])
 }
 
 // Registro de cada cobrança enviada pela tela "Cobrar hoje".

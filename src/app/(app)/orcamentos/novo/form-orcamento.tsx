@@ -9,6 +9,7 @@ import { Plus, Search, Trash2, UserPlus } from "lucide-react";
 import { salvarOrcamento, type DadosOrcamento } from "../actions";
 import { calcularSubtotal, centavosParaTexto, formatarCentavos, lerQuantidade, lerReais } from "@/lib/dinheiro";
 import { calcularMargem } from "@/lib/margem";
+import { chaveGrupo, organizar, padroesEfetivos, TIPOS, type Tipo } from "@/lib/opcoes";
 import { BlocoMargem } from "@/components/bloco-margem";
 import {
   estiloBotao,
@@ -31,6 +32,9 @@ type Linha = {
   quantidadeTexto: string;
   precoTexto: string;
   custoTexto: string; // custo por unidade (opcional; vazio = não informado). Interno.
+  tipo: Tipo; // fixo (padrão), opção de um grupo ou adicional
+  grupo: string; // só para "opcao": nome do grupo, ex.: "Material"
+  padrao: boolean; // só para "opcao": já vem escolhida no grupo
 };
 
 let proximaChave = 1;
@@ -64,15 +68,30 @@ export function FormOrcamento({
     : [];
 
   const subtotais = linhas.map(subtotalDaLinha);
-  const total = subtotais.reduce<number>((soma, s) => soma + (s ?? 0), 0);
 
-  // Custo, lucro e margem (só aparece se algum item tiver custo preenchido)
+  // Opções: em cada grupo, qual já vem escolhida. O total mostra o que o cliente vê ao abrir:
+  // fixos + a opção padrão de cada grupo (adicionais só entram se ele marcar).
+  const padroes = padroesEfetivos(linhas);
+  const incluido = linhas.map((l, i) => (l.tipo === "opcao" ? padroes[i] : l.tipo === "fixo"));
+  const total = subtotais.reduce<number>((soma, s, i) => soma + (incluido[i] ? (s ?? 0) : 0), 0);
+  const temOpcoes = linhas.some((l) => l.tipo !== "fixo");
+  const totalAdicionais = subtotais.reduce<number>(
+    (soma, s, i) => soma + (linhas[i].tipo === "adicional" ? (s ?? 0) : 0),
+    0,
+  );
+  // nomes de grupo já usados, para sugerir ao digitar
+  const nomesGrupos = [...new Map(linhas.filter((l) => l.grupo.trim()).map((l) => [chaveGrupo(l.grupo), l.grupo.trim()])).values()];
+
+  // Custo, lucro e margem (só aparece se algum item tiver custo preenchido).
+  // Considera o que está incluído no total.
   const margem = calcularMargem(
-    linhas.map((l, i) => ({
-      quantidade: lerQuantidade(l.quantidadeTexto) ?? 0,
-      subtotal: subtotais[i] ?? 0,
-      custoUnitario: l.custoTexto.trim() ? lerReais(l.custoTexto) : null,
-    })),
+    linhas
+      .map((l, i) => ({
+        quantidade: lerQuantidade(l.quantidadeTexto) ?? 0,
+        subtotal: subtotais[i] ?? 0,
+        custoUnitario: l.custoTexto.trim() ? lerReais(l.custoTexto) : null,
+      }))
+      .filter((_, i) => incluido[i]),
   );
 
   function adicionar(item: ItemCatalogo) {
@@ -85,13 +104,36 @@ export function FormOrcamento({
         quantidadeTexto: "1",
         precoTexto: centavosParaTexto(item.preco),
         custoTexto: item.custo !== null ? centavosParaTexto(item.custo) : "", // sugere o custo do catálogo
+        tipo: "fixo",
+        grupo: "",
+        padrao: false,
       },
     ]);
     setBusca("");
   }
 
-  function alterar(chave: number, campo: "quantidadeTexto" | "precoTexto" | "custoTexto", valor: string) {
+  function alterar(chave: number, campo: "quantidadeTexto" | "precoTexto" | "custoTexto" | "grupo", valor: string) {
     setLinhas((atual) => atual.map((l) => (l.chave === chave ? { ...l, [campo]: valor } : l)));
+  }
+
+  function mudarTipo(chave: number, tipo: Tipo) {
+    setLinhas((atual) => {
+      // Ao virar "Opção", já sugere o último grupo usado (quase sempre é o mesmo)
+      const ultimoGrupo = atual.findLast((l) => l.chave !== chave && l.tipo === "opcao")?.grupo ?? "";
+      return atual.map((l) =>
+        l.chave === chave ? { ...l, tipo, grupo: tipo === "opcao" && !l.grupo ? ultimoGrupo : l.grupo } : l,
+      );
+    });
+  }
+
+  // Marca esta opção como a padrão do grupo (e desmarca as outras do mesmo grupo)
+  function tornarPadrao(chave: number) {
+    setLinhas((atual) => {
+      const grupo = chaveGrupo(atual.find((l) => l.chave === chave)?.grupo ?? "");
+      return atual.map((l) =>
+        l.tipo === "opcao" && chaveGrupo(l.grupo) === grupo ? { ...l, padrao: l.chave === chave } : l,
+      );
+    });
   }
 
   function remover(chave: number) {
@@ -114,7 +156,23 @@ export function FormOrcamento({
       if (l.custoTexto.trim() && custo === null) {
         return setErro(`Item ${i + 1} (${l.descricao}): o custo está errado. Use o formato 12,50 ou deixe vazio.`);
       }
-      dados.push({ descricao: l.descricao, quantidade: l.quantidadeTexto, precoUnitario: preco, custoUnitario: custo });
+      if (l.tipo === "opcao" && !l.grupo.trim()) {
+        return setErro(`Item ${i + 1} (${l.descricao}): escreva o nome do grupo (ex.: Material).`);
+      }
+      dados.push({
+        descricao: l.descricao,
+        quantidade: l.quantidadeTexto,
+        precoUnitario: preco,
+        custoUnitario: custo,
+        tipo: l.tipo,
+        grupo: l.grupo,
+        padrao: padroes[i],
+      });
+    }
+    for (const g of organizar(linhas).grupos) {
+      if (g.itens.length < 2) {
+        return setErro(`O grupo “${g.nome}” tem só uma opção. Adicione outra ou marque o item como Fixo.`);
+      }
     }
 
     iniciarSalvar(async () => {
@@ -242,8 +300,63 @@ export function FormOrcamento({
                   />
                 </label>
               </div>
+              {/* Tipo: fixo (sempre entra), opção de um grupo (o cliente escolhe 1) ou adicional */}
+              <div
+                role="radiogroup"
+                aria-label={`Tipo de ${linha.descricao}`}
+                className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1"
+              >
+                {TIPOS.map((t) => (
+                  <button
+                    key={t.valor}
+                    type="button"
+                    role="radio"
+                    aria-checked={linha.tipo === t.valor}
+                    onClick={() => mudarTipo(linha.chave, t.valor)}
+                    className={`min-h-11 rounded-lg text-base font-medium ${
+                      linha.tipo === t.valor ? "bg-white text-gray-900 shadow-sm" : "text-gray-600"
+                    }`}
+                  >
+                    {t.rotulo}
+                  </button>
+                ))}
+              </div>
+              {linha.tipo === "opcao" && (
+                <div className="mt-2 flex items-end gap-2">
+                  <label className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="text-sm text-gray-600">Grupo (o cliente escolhe 1)</span>
+                    <input
+                      list="grupos-do-orcamento"
+                      value={linha.grupo}
+                      maxLength={60}
+                      placeholder="Ex.: Material"
+                      onChange={(e) => alterar(linha.chave, "grupo", e.target.value)}
+                      className={estiloCampo}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    aria-pressed={padroes[i]}
+                    onClick={() => tornarPadrao(linha.chave)}
+                    className={`min-h-12 shrink-0 rounded-xl px-3 text-base font-medium ring-1 ${
+                      padroes[i] ? "bg-green-50 text-green-800 ring-green-300" : "text-gray-700 ring-gray-300"
+                    }`}
+                  >
+                    {padroes[i] ? "✓ Padrão" : "Tornar padrão"}
+                  </button>
+                </div>
+              )}
+              {linha.tipo === "adicional" && (
+                <p className="mt-2 text-sm text-gray-600">O cliente marca se quiser. Só entra no total se ele marcar.</p>
+              )}
               <div className="mt-3 flex justify-between text-base">
-                <span className="text-gray-600">Subtotal</span>
+                <span className="text-gray-600">
+                  {linha.tipo === "opcao" && !padroes[i]
+                    ? "Subtotal (se o cliente escolher)"
+                    : linha.tipo === "adicional"
+                      ? "Subtotal (se o cliente marcar)"
+                      : "Subtotal"}
+                </span>
                 <span className="font-semibold">
                   {subtotais[i] === null ? "confira os números" : formatarCentavos(subtotais[i])}
                 </span>
@@ -253,10 +366,24 @@ export function FormOrcamento({
         </ul>
       )}
 
+      <datalist id="grupos-do-orcamento">
+        {nomesGrupos.map((nome) => (
+          <option key={nome} value={nome} />
+        ))}
+      </datalist>
+
       {/* Total */}
-      <div className={`${estiloCartao} flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-5 py-5`}>
-        <span className="text-lg font-medium">Total</span>
-        <span className="text-3xl font-extrabold text-marca tabular-nums">{formatarCentavos(total)}</span>
+      <div className={`${estiloCartao} px-5 py-5`}>
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+          <span className="text-lg font-medium">Total</span>
+          <span className="text-3xl font-extrabold text-marca tabular-nums">{formatarCentavos(total)}</span>
+        </div>
+        {temOpcoes && (
+          <p className="mt-2 text-sm text-gray-600">
+            Com as opções padrão. O cliente pode trocar na página do orçamento e o total muda na hora.
+            {totalAdicionais > 0 && ` Adicionais, se ele marcar todos: + ${formatarCentavos(totalAdicionais)}.`}
+          </p>
+        )}
       </div>
 
       {/* Custo e margem: interno, só aparece se algum item tiver custo */}
