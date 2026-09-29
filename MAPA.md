@@ -328,7 +328,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `actions.ts` | `sair`: apaga a sessão. |
 | `orcamentos/page.tsx` | Lista de orçamentos (mais recentes primeiro), faixa de cobrança pendente, pílula de status e "Viu / Não viu". |
 | `orcamentos/novo/page.tsx` | Tela de novo orçamento (explica o que falta se não houver cliente ou catálogo). |
-| `orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento com total ao vivo (passo 1): custo, tipo do item (Fixo / Opção / Adicional), grupo e padrão. |
+| `orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento com total ao vivo (passo 1): custo, tipo do item (Fixo / Opção / Adicional), grupo e padrão. O botão "+ Outra opção de …" faz o próximo item buscado entrar como opção do mesmo grupo. |
 | `orcamentos/[id]/page.tsx` | Um orçamento: total, escolha do cliente (e o sinal "mexeu nas opções"), margem, envio, "Ver como o cliente vê", PDF, itens (por grupo), observação e histórico. |
 | `orcamentos/[id]/botoes-envio.tsx` | "Enviar no WhatsApp" e "Copiar link do orçamento". |
 | `orcamentos/actions.ts` | `salvarOrcamento`, `marcarEnviado`, `alterarStatus`. |

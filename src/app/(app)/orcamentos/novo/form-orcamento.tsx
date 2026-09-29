@@ -4,7 +4,7 @@
 // Ao salvar, manda só cliente, observação e linhas; o servidor recalcula os valores.
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { Plus, Search, Trash2, UserPlus } from "lucide-react";
 import { salvarOrcamento, type DadosOrcamento } from "../actions";
 import { calcularSubtotal, centavosParaTexto, formatarCentavos, lerQuantidade, lerReais } from "@/lib/dinheiro";
@@ -59,6 +59,9 @@ export function FormOrcamento({
   const [linhas, setLinhas] = useState<Linha[]>([]);
   const [observacao, setObservacao] = useState("");
   const [busca, setBusca] = useState("");
+  // "+ Outra opção de Material": o próximo item escolhido na busca entra como opção deste grupo
+  const [grupoPendente, setGrupoPendente] = useState<string | null>(null);
+  const buscaRef = useRef<HTMLInputElement>(null);
   const [erro, setErro] = useState<string>();
   const [salvando, iniciarSalvar] = useTransition();
 
@@ -81,6 +84,14 @@ export function FormOrcamento({
   );
   // nomes de grupo já usados, para sugerir ao digitar
   const nomesGrupos = [...new Map(linhas.filter((l) => l.grupo.trim()).map((l) => [chaveGrupo(l.grupo), l.grupo.trim()])).values()];
+  // quantas opções cada grupo tem, e qual é a última linha de cada grupo (onde fica o botão "+ Outra opção")
+  const tamanhoGrupo = new Map<string, number>();
+  const ultimaDoGrupo = new Map<string, number>();
+  for (const l of linhas) {
+    if (l.tipo !== "opcao") continue;
+    tamanhoGrupo.set(chaveGrupo(l.grupo), (tamanhoGrupo.get(chaveGrupo(l.grupo)) ?? 0) + 1);
+    ultimaDoGrupo.set(chaveGrupo(l.grupo), l.chave);
+  }
 
   // Custo, lucro e margem (só aparece se algum item tiver custo preenchido).
   // Considera o que está incluído no total.
@@ -94,30 +105,47 @@ export function FormOrcamento({
       .filter((_, i) => incluido[i]),
   );
 
+  // Toda mudança nas linhas apaga o erro antigo (ele pode nem valer mais)
+  function mudarLinhas(mudanca: (atual: Linha[]) => Linha[]) {
+    setErro(undefined);
+    setLinhas(mudanca);
+  }
+
   function adicionar(item: ItemCatalogo) {
-    setLinhas((atual) => [
-      ...atual,
-      {
-        chave: proximaChave++,
-        descricao: item.descricao,
-        unidade: item.unidade,
-        quantidadeTexto: "1",
-        precoTexto: centavosParaTexto(item.preco),
-        custoTexto: item.custo !== null ? centavosParaTexto(item.custo) : "", // sugere o custo do catálogo
-        tipo: "fixo",
-        grupo: "",
-        padrao: false,
-      },
-    ]);
+    const nova: Linha = {
+      chave: proximaChave++,
+      descricao: item.descricao,
+      unidade: item.unidade,
+      quantidadeTexto: "1",
+      precoTexto: centavosParaTexto(item.preco),
+      custoTexto: item.custo !== null ? centavosParaTexto(item.custo) : "", // sugere o custo do catálogo
+      tipo: grupoPendente ? "opcao" : "fixo",
+      grupo: grupoPendente ?? "",
+      padrao: false,
+    };
+    mudarLinhas((atual) => {
+      if (!grupoPendente) return [...atual, nova];
+      // outra opção de um grupo: entra logo depois da última opção desse grupo
+      const depois = atual.findLastIndex((l) => l.tipo === "opcao" && chaveGrupo(l.grupo) === chaveGrupo(grupoPendente));
+      return depois === -1 ? [...atual, nova] : [...atual.slice(0, depois + 1), nova, ...atual.slice(depois + 1)];
+    });
+    setGrupoPendente(null);
     setBusca("");
   }
 
+  function pedirOutraOpcao(grupo: string) {
+    setGrupoPendente(grupo.trim());
+    setBusca("");
+    buscaRef.current?.focus();
+    buscaRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
   function alterar(chave: number, campo: "quantidadeTexto" | "precoTexto" | "custoTexto" | "grupo", valor: string) {
-    setLinhas((atual) => atual.map((l) => (l.chave === chave ? { ...l, [campo]: valor } : l)));
+    mudarLinhas((atual) => atual.map((l) => (l.chave === chave ? { ...l, [campo]: valor } : l)));
   }
 
   function mudarTipo(chave: number, tipo: Tipo) {
-    setLinhas((atual) => {
+    mudarLinhas((atual) => {
       // Ao virar "Opção", já sugere o último grupo usado (quase sempre é o mesmo)
       const ultimoGrupo = atual.findLast((l) => l.chave !== chave && l.tipo === "opcao")?.grupo ?? "";
       return atual.map((l) =>
@@ -128,7 +156,7 @@ export function FormOrcamento({
 
   // Marca esta opção como a padrão do grupo (e desmarca as outras do mesmo grupo)
   function tornarPadrao(chave: number) {
-    setLinhas((atual) => {
+    mudarLinhas((atual) => {
       const grupo = chaveGrupo(atual.find((l) => l.chave === chave)?.grupo ?? "");
       return atual.map((l) =>
         l.tipo === "opcao" && chaveGrupo(l.grupo) === grupo ? { ...l, padrao: l.chave === chave } : l,
@@ -137,7 +165,7 @@ export function FormOrcamento({
   }
 
   function remover(chave: number) {
-    setLinhas((atual) => atual.filter((l) => l.chave !== chave));
+    mudarLinhas((atual) => atual.filter((l) => l.chave !== chave));
   }
 
   function salvar() {
@@ -210,14 +238,23 @@ export function FormOrcamento({
         <label htmlFor="busca" className={estiloRotulo}>
           O que vai no orçamento?
         </label>
+        {grupoPendente && (
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-blue-50 px-4 py-2 text-base text-marca">
+            <span>Busque abaixo a outra opção de “{grupoPendente}”.</span>
+            <button type="button" onClick={() => setGrupoPendente(null)} className="min-h-11 shrink-0 font-medium underline">
+              Cancelar
+            </button>
+          </div>
+        )}
         <div className="relative">
           <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-gray-400" aria-hidden />
           <input
             id="busca"
+            ref={buscaRef}
             type="search"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Digite o nome do produto ou serviço"
+            placeholder={grupoPendente ? "Ex.: MDF resistente" : "Digite o nome do produto ou serviço"}
             className={`${estiloCampo} pl-12`}
           />
         </div>
@@ -343,6 +380,22 @@ export function FormOrcamento({
                     }`}
                   >
                     {padroes[i] ? "✓ Padrão" : "Tornar padrão"}
+                  </button>
+                </div>
+              )}
+              {linha.tipo === "opcao" && ultimaDoGrupo.get(chaveGrupo(linha.grupo)) === linha.chave && (
+                <div className="mt-2 flex flex-col gap-1">
+                  {tamanhoGrupo.get(chaveGrupo(linha.grupo)) === 1 && (
+                    <p className="text-sm text-amber-900">Falta a outra opção: o grupo precisa de pelo menos 2.</p>
+                  )}
+                  <button
+                    type="button"
+                    disabled={!linha.grupo.trim()}
+                    onClick={() => pedirOutraOpcao(linha.grupo)}
+                    className={`${estiloBotaoSecundario} w-full`}
+                  >
+                    <Plus className="size-5" aria-hidden />
+                    {linha.grupo.trim() ? `Outra opção de “${linha.grupo.trim()}”` : "Escreva o nome do grupo acima"}
                   </button>
                 </div>
               )}
