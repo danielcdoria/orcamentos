@@ -111,6 +111,9 @@ model Item {
   descricao String
   preco     Int // em centavos
   unidade   String // ex.: "un", "m²", "h", "kg"
+  // Custo padrão por unidade, em centavos (opcional). INFORMAÇÃO INTERNA: sugerido ao
+  // montar o orçamento e usado no cálculo de margem; nunca vai para o cliente final.
+  custo     Int?
 
   empresa Empresa @relation(fields: [empresaId], references: [id])
 
@@ -173,6 +176,9 @@ model OrcamentoItem {
   quantidade    Decimal @db.Decimal(10, 3) // aceita 2,5 m² ou 1,5 h
   precoUnitario Int // em centavos
   subtotal      Int // em centavos: arredondamento de quantidade × precoUnitario
+  // Custo por unidade, em centavos (opcional). INFORMAÇÃO INTERNA: nunca pode aparecer na
+  // página pública nem no PDF. Por isso aquelas telas pedem ao banco só os campos que mostram.
+  custoUnitario Int?
 
   empresa   Empresa   @relation(fields: [empresaId], references: [id])
   orcamento Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)

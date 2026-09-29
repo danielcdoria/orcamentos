@@ -14,7 +14,7 @@ import type { StatusOrcamento } from "@/generated/prisma/enums";
 export type DadosOrcamento = {
   clienteId: string;
   observacao: string;
-  linhas: { descricao: string; quantidade: string; precoUnitario: number }[];
+  linhas: { descricao: string; quantidade: string; precoUnitario: number; custoUnitario?: number | null }[];
 };
 
 export type EstadoOrcamento = { erro?: string };
@@ -53,6 +53,11 @@ export async function salvarOrcamento(dados: DadosOrcamento): Promise<EstadoOrca
       return { erro: `Item ${i + 1} (${descricao}): o preço está errado.` };
     }
     const subtotal = calcularSubtotal(quantidade, preco);
+    // Custo por unidade: opcional e interno (nunca vai para o cliente final)
+    const custo = linha.custoUnitario ?? null;
+    if (custo !== null && (!Number.isInteger(custo) || custo < 0 || custo > VALOR_MAXIMO)) {
+      return { erro: `Item ${i + 1} (${descricao}): o custo está errado.` };
+    }
     if (preco > VALOR_MAXIMO || subtotal > VALOR_MAXIMO) {
       return { erro: `Item ${i + 1} (${descricao}): valor alto demais. O máximo é R$ 20.000.000,00.` };
     }
@@ -63,6 +68,7 @@ export async function salvarOrcamento(dados: DadosOrcamento): Promise<EstadoOrca
       quantidade: String(quantidade), // Decimal: passamos como texto para não perder precisão
       precoUnitario: preco,
       subtotal,
+      custoUnitario: custo,
     });
   }
 

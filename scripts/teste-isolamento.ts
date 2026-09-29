@@ -251,6 +251,35 @@ async function main() {
   const r = await pagina("", `/orcamento/${"0".repeat(64)}`);
   registrar("Link público com código inventado", r.status === 404, `HTTP ${r.status}`);
 
+  // 5) PRIVACIDADE DO CUSTO: custo, lucro e margem nunca chegam ao cliente final.
+  //    Grava um custo fácil de reconhecer (R$ 4.242,42) e procura na página pública e no PDF.
+  await prisma.orcamentoItem.updateMany({ where: { orcamentoId: A.rascunho.id }, data: { custoUnitario: 424242 } });
+  await prisma.item.update({ where: { id: A.item.id }, data: { custo: 313131 } });
+  const proibidos = ["424242", "4.242,42", "4242,42", "313131", "3.131,31", "custo", "lucro", "margem"];
+  const achar = (texto: string) => proibidos.filter((p) => texto.toLowerCase().includes(p.toLowerCase()));
+
+  for (const [quem, sessao] of [["cliente final", ""], ["dono logado (Ver como o cliente vê)", A.sessao]] as const) {
+    const pub = await pagina(sessao, `/orcamento/${A.rascunho.token}`);
+    const achados = achar(pub.corpo);
+    registrar(`Página pública não mostra custo/lucro/margem, vista pelo ${quem}`,
+      pub.status === 200 && pub.corpo.includes("123,45") && achados.length === 0,
+      achados.length ? `ACHOU: ${achados.join(", ")}` : `HTTP ${pub.status}`);
+  }
+
+  // PDF: descompacta os trechos internos do arquivo e procura em texto e em hexadecimal
+  const pdf = Buffer.from(await (await fetch(`${BASE}/orcamento/${A.rascunho.token}/pdf`)).arrayBuffer());
+  const { inflateSync } = await import("node:zlib");
+  let conteudo = pdf.toString("latin1");
+  for (const m of conteudo.matchAll(/stream\r?\n([\s\S]*?)endstream/g)) {
+    try { conteudo += inflateSync(Buffer.from(m[1], "latin1")).toString("latin1"); } catch { /* trecho não compactado */ }
+  }
+  const hex = (t: string) => Buffer.from(t, "latin1").toString("hex");
+  const noPdf = (t: string) => conteudo.includes(t) || conteudo.toLowerCase().includes(hex(t));
+  const achadosPdf = proibidos.filter(noPdf);
+  registrar("PDF não tem custo/lucro/margem",
+    noPdf("123,45") && achadosPdf.length === 0, // "123,45" (o preço) PRECISA aparecer: prova que a busca funciona
+    achadosPdf.length ? `ACHOU: ${achadosPdf.join(", ")}` : noPdf("123,45") ? "preço encontrado, custo não" : "busca não achou nem o preço");
+
   await apagarEmpresasDeTeste();
   const falhas = resultados.filter((x) => !x.ok).length;
   console.log(`\n${resultados.length - falhas} de ${resultados.length} testes passaram.${falhas ? " ❌ ATENÇÃO: há vazamento!" : " Nenhum vazamento encontrado."}\n`);

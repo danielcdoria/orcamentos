@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
+import { CAMPOS_ORCAMENTO_PUBLICO } from "@/lib/publico";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData, formatarQuantidade } from "@/lib/formatos";
 import { formatarTelefone } from "@/lib/telefone";
@@ -23,12 +24,12 @@ export async function GET(_req: Request, ctx: RouteContext<"/orcamento/[token]/p
   const { token } = await ctx.params;
   if (!/^[a-f0-9]{64}$/.test(token)) return new Response("Orçamento não encontrado", { status: 404 });
 
+  // Só os campos que o cliente pode ver (ver src/lib/publico.ts): o custo nem sai do banco.
   const o = await prisma.orcamento.findUnique({
     where: { token },
-    include: {
+    select: {
+      ...CAMPOS_ORCAMENTO_PUBLICO,
       empresa: { select: { nome: true, telefone: true, condicaoPagamento: true, logo: true } },
-      cliente: { select: { nome: true, telefone: true } },
-      itens: { orderBy: { id: "asc" } },
     },
   });
   if (!o) return new Response("Orçamento não encontrado", { status: 404 });

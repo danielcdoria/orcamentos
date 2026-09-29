@@ -8,6 +8,8 @@ import { useState, useTransition } from "react";
 import { Plus, Search, Trash2, UserPlus } from "lucide-react";
 import { salvarOrcamento, type DadosOrcamento } from "../actions";
 import { calcularSubtotal, centavosParaTexto, formatarCentavos, lerQuantidade, lerReais } from "@/lib/dinheiro";
+import { calcularMargem } from "@/lib/margem";
+import { BlocoMargem } from "@/components/bloco-margem";
 import {
   estiloBotao,
   estiloBotaoSecundario,
@@ -18,7 +20,7 @@ import {
 } from "@/components/estilos";
 
 type Cliente = { id: string; nome: string };
-type ItemCatalogo = { id: string; descricao: string; preco: number; unidade: string };
+type ItemCatalogo = { id: string; descricao: string; preco: number; unidade: string; custo: number | null };
 
 // Cada linha guarda o que foi DIGITADO (texto), para a pessoa poder apagar e
 // reescrever à vontade. A conversão para número acontece na hora de calcular.
@@ -28,6 +30,7 @@ type Linha = {
   unidade: string;
   quantidadeTexto: string;
   precoTexto: string;
+  custoTexto: string; // custo por unidade (opcional; vazio = não informado). Interno.
 };
 
 let proximaChave = 1;
@@ -63,6 +66,15 @@ export function FormOrcamento({
   const subtotais = linhas.map(subtotalDaLinha);
   const total = subtotais.reduce<number>((soma, s) => soma + (s ?? 0), 0);
 
+  // Custo, lucro e margem (só aparece se algum item tiver custo preenchido)
+  const margem = calcularMargem(
+    linhas.map((l, i) => ({
+      quantidade: lerQuantidade(l.quantidadeTexto) ?? 0,
+      subtotal: subtotais[i] ?? 0,
+      custoUnitario: l.custoTexto.trim() ? lerReais(l.custoTexto) : null,
+    })),
+  );
+
   function adicionar(item: ItemCatalogo) {
     setLinhas((atual) => [
       ...atual,
@@ -72,12 +84,13 @@ export function FormOrcamento({
         unidade: item.unidade,
         quantidadeTexto: "1",
         precoTexto: centavosParaTexto(item.preco),
+        custoTexto: item.custo !== null ? centavosParaTexto(item.custo) : "", // sugere o custo do catálogo
       },
     ]);
     setBusca("");
   }
 
-  function alterar(chave: number, campo: "quantidadeTexto" | "precoTexto", valor: string) {
+  function alterar(chave: number, campo: "quantidadeTexto" | "precoTexto" | "custoTexto", valor: string) {
     setLinhas((atual) => atual.map((l) => (l.chave === chave ? { ...l, [campo]: valor } : l)));
   }
 
@@ -97,7 +110,11 @@ export function FormOrcamento({
         return setErro(`Item ${i + 1} (${l.descricao}): a quantidade está errada.`);
       }
       if (preco === null) return setErro(`Item ${i + 1} (${l.descricao}): o preço está errado. Use o formato 12,50.`);
-      dados.push({ descricao: l.descricao, quantidade: l.quantidadeTexto, precoUnitario: preco });
+      const custo = l.custoTexto.trim() ? lerReais(l.custoTexto) : null;
+      if (l.custoTexto.trim() && custo === null) {
+        return setErro(`Item ${i + 1} (${l.descricao}): o custo está errado. Use o formato 12,50 ou deixe vazio.`);
+      }
+      dados.push({ descricao: l.descricao, quantidade: l.quantidadeTexto, precoUnitario: preco, custoUnitario: custo });
     }
 
     iniciarSalvar(async () => {
@@ -195,9 +212,9 @@ export function FormOrcamento({
                   <Trash2 className="size-5" aria-hidden />
                 </button>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="mt-3 grid grid-cols-3 items-end gap-2">
                 <label className="flex flex-col gap-1">
-                  <span className="text-sm text-gray-600">Quantidade ({linha.unidade})</span>
+                  <span className="text-sm text-gray-600">Qtd ({linha.unidade})</span>
                   <input
                     inputMode="decimal"
                     value={linha.quantidadeTexto}
@@ -212,6 +229,16 @@ export function FormOrcamento({
                     value={linha.precoTexto}
                     onChange={(e) => alterar(linha.chave, "precoTexto", e.target.value)}
                     className={estiloCampo}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-sm text-gray-600">Custo (opcional)</span>
+                  <input
+                    inputMode="decimal"
+                    placeholder="—"
+                    value={linha.custoTexto}
+                    onChange={(e) => alterar(linha.chave, "custoTexto", e.target.value)}
+                    className={`${estiloCampo} border-dashed`}
                   />
                 </label>
               </div>
@@ -231,6 +258,9 @@ export function FormOrcamento({
         <span className="text-lg font-medium">Total</span>
         <span className="text-3xl font-extrabold text-marca tabular-nums">{formatarCentavos(total)}</span>
       </div>
+
+      {/* Custo e margem: interno, só aparece se algum item tiver custo */}
+      <BlocoMargem resumo={margem} />
 
       {/* Observação */}
       <label className="flex flex-col gap-2">

@@ -21,6 +21,7 @@ export default async function EditarItem(props: PageProps<"/catalogo/[id]">) {
           descricao: item.descricao,
           unidade: item.unidade,
           precoTexto: centavosParaTexto(item.preco),
+          custoTexto: item.custo !== null ? centavosParaTexto(item.custo) : "",
         }}
       />
     </div>

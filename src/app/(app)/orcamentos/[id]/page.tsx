@@ -11,6 +11,8 @@ import { telefoneParaWhatsApp } from "@/lib/telefone";
 import { BotoesEnvio } from "./botoes-envio";
 import { SeletorStatus } from "@/components/seletor-status";
 import { Aviso } from "@/components/aviso";
+import { BlocoMargem } from "@/components/bloco-margem";
+import { calcularMargem } from "@/lib/margem";
 import { estiloBotaoSecundario, estiloCartao, estiloTitulo } from "@/components/estilos";
 
 // Tela INTERNA de um orçamento (exige login). Daqui se envia e se acompanha o orçamento.
@@ -80,6 +82,13 @@ export default async function DetalheOrcamento(props: PageProps<"/orcamentos/[id
         <span className="text-3xl font-extrabold text-marca tabular-nums">{formatarCentavos(o.total)}</span>
       </div>
 
+      {/* Custo e margem: interno (esta tela exige login). Só aparece se houver custo. */}
+      <BlocoMargem
+        resumo={calcularMargem(
+          o.itens.map((i) => ({ quantidade: Number(i.quantidade), subtotal: i.subtotal, custoUnitario: i.custoUnitario })),
+        )}
+      />
+
       <BotoesEnvio
         orcamentoId={o.id}
         link={linkPublico}
@@ -109,6 +118,9 @@ export default async function DetalheOrcamento(props: PageProps<"/orcamentos/[id
                 <p className="text-base">{item.descricao}</p>
                 <p className="text-base text-gray-600">
                   {formatarQuantidade(item.quantidade)} × {formatarCentavos(item.precoUnitario)}
+                  {item.custoUnitario !== null && (
+                    <span className="text-sm text-gray-500"> · custo {formatarCentavos(item.custoUnitario)}</span>
+                  )}
                 </p>
               </div>
               <p className="shrink-0 text-base font-semibold">{formatarCentavos(item.subtotal)}</p>

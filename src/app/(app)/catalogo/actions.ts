@@ -22,9 +22,12 @@ export async function salvarItem(
   const unidade = String(formData.get("unidade") ?? "").trim() || "un";
   const precoTexto = String(formData.get("preco") ?? "").trim();
   const preco = lerReais(precoTexto);
+  // Custo padrão: opcional e interno (sugerido quando o item entra num orçamento)
+  const custoTexto = String(formData.get("custo") ?? "").trim();
+  const custo = custoTexto ? lerReais(custoTexto) : null;
   const falhar = (erro: string): EstadoForm => ({
     erro,
-    valores: { descricao, unidade, precoTexto },
+    valores: { descricao, unidade, precoTexto, custoTexto },
   });
 
   if (!descricao) return falhar("Escreva o nome do produto ou serviço.");
@@ -32,8 +35,10 @@ export async function salvarItem(
   if (unidade.length > 20) return falhar("Unidade muito longa.");
   if (preco === null) return falhar("O preço está errado. Escreva assim: 12,50");
   if (preco > VALOR_MAXIMO) return falhar("Preço alto demais. O máximo é R$ 20.000.000,00.");
+  if (custoTexto && custo === null) return falhar("O custo está errado. Escreva assim: 12,50 (ou deixe vazio).");
+  if (custo !== null && custo > VALOR_MAXIMO) return falhar("Custo alto demais. O máximo é R$ 20.000.000,00.");
 
-  const dados = { descricao, unidade, preco };
+  const dados = { descricao, unidade, preco, custo };
 
   if (id) {
     const { count } = await prisma.item.updateMany({ where: { id, empresaId }, data: dados });

@@ -13,7 +13,7 @@ import {
   estiloRotulo,
 } from "@/components/estilos";
 
-type Item = { id: string; descricao: string; unidade: string; precoTexto: string };
+type Item = { id: string; descricao: string; unidade: string; precoTexto: string; custoTexto: string };
 
 const UNIDADES = ["un", "m²", "m", "m³", "h", "kg", "serviço", "diária", "par", "jogo", "kit"];
 
@@ -26,6 +26,7 @@ export function FormItem({ item }: { item?: Item }) {
     descricao: item?.descricao ?? "",
     unidade: item?.unidade ?? "un",
     precoTexto: item?.precoTexto ?? "",
+    custoTexto: item?.custoTexto ?? "",
   };
 
   function confirmarApagar() {
@@ -73,6 +74,21 @@ export function FormItem({ item }: { item?: Item }) {
         </label>
       </div>
       <p className="-mt-2 text-sm text-gray-600">“Cobrado por”: un (unidade), m², h (hora), kg, serviço...</p>
+
+      <label className="flex flex-col gap-2">
+        <span className={estiloRotulo}>Custo para você, por unidade (opcional)</span>
+        <input
+          name="custo"
+          inputMode="decimal"
+          placeholder="0,00"
+          defaultValue={v.custoTexto}
+          className={`${estiloCampo} border-dashed`}
+        />
+        <span className="text-sm text-gray-600">
+          Quanto isso custa pra você (material, terceiros). Só você vê: serve para calcular o lucro do
+          orçamento e o cliente nunca recebe.
+        </span>
+      </label>
 
       {estado.erro && <p role="alert" className={estiloErro}>{estado.erro}</p>}
 

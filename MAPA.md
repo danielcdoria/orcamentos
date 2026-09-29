@@ -103,9 +103,12 @@ cada registro. Por isso estas regras são tão importantes.
    escreve o texto; quem toca em "Enviar" é a pessoa, pelo link `wa.me`.
 6. **Mudança no banco é sempre pelo Prisma:** edite `prisma/schema.prisma` e rode
    `npx prisma migrate dev --name ...`. Nunca altere tabelas pelo painel da Neon.
-7. **Mexeu em tela ou ação? Rode `npm run teste:isolamento`.** Ele confere que nenhuma empresa
+7. **Custo, lucro e margem são internos.** A página pública e o PDF só leem os campos de
+   `src/lib/publico.ts`. Nunca troque aquele `select` por `include`, e nunca coloque custo lá.
+   O `npm run teste:isolamento` confere isso (procura o custo no HTML e dentro do PDF).
+8. **Mexeu em tela ou ação? Rode `npm run teste:isolamento`.** Ele confere que nenhuma empresa
    consegue ver ou alterar dados de outra.
-8. **Senhas nunca são guardadas**, só o hash (`src/lib/senha.ts`). E o `.env`/`.env.producao`
+9. **Senhas nunca são guardadas**, só o hash (`src/lib/senha.ts`). E o `.env`/`.env.producao`
    nunca são compartilhados.
 
 ---
@@ -200,9 +203,9 @@ e os enviados, fechados e a taxa de fechamento **entre os enviados no mês atual
 | `Usuario` | O login da empresa (um por empresa): email, hash da senha, contador de tentativas erradas e bloqueio. |
 | `Sessao` | Cada login aberto (um celular, um computador). Guarda o hash do código do cookie. Dura 30 dias. |
 | `Cliente` | Os clientes da empresa: nome, telefone, observação. |
-| `Item` | O catálogo: descrição, preço (centavos), unidade. |
+| `Item` | O catálogo: descrição, preço (centavos), unidade e **custo padrão** (opcional, interno). |
 | `Orcamento` | Número, cliente, total (centavos), observação, validade, status, token do link, datas de envio/abertura, vezes aberto. |
-| `OrcamentoItem` | As linhas do orçamento: cópia da descrição e do preço, quantidade (aceita 2,5), subtotal. |
+| `OrcamentoItem` | As linhas do orçamento: cópia da descrição e do preço, quantidade (aceita 2,5), subtotal e **custo por unidade** (opcional, interno: nunca vai para o cliente). |
 | `Cobranca` | Cada cobrança enviada: etapa (1 ou 2) e o texto. Uma por etapa por orçamento. |
 
 **Status do orçamento:** `rascunho` → `enviado` (tocou em Enviar) → `aberto` (cliente viu,
@@ -259,6 +262,8 @@ Pastas geradas (fora do git, não se edita): `node_modules/` (bibliotecas, recri
 | `status.ts` | Nome e cor de cada status, e quais contam como "esperando o cliente". |
 | `cobranca.ts` | **A regra de cobrança** (passo 4): dias desde o envio, etapa devida, fila do dia, contagem para a bolinha, perdidos automáticos. |
 | `abertura.ts` | Decide se uma visita ao link conta como abertura e grava a abertura (passo 3). |
+| `margem.ts` | Custo total, lucro e margem de um orçamento (margem = lucro ÷ venda) e a faixa de cor (verde > 30%, amarelo 15–30%, vermelho < 15%). Interno. |
+| `publico.ts` | **O que pode ir para o cliente final**: os únicos campos que a página pública e o PDF pedem ao banco. O custo não está aqui, por isso nem sai do banco nesses caminhos. |
 | `mes.ts` | Início, fim e nome do mês atual em Brasília (para o painel). |
 | `url.ts` | `urlBase()`: endereço do site para montar links. No `npm run dev`, troca `localhost` pelo IP do Mac na rede. |
 
@@ -268,6 +273,7 @@ Pastas geradas (fora do git, não se edita): `node_modules/` (bibliotecas, recri
 | `estilos.ts` | Classes de campos (48px), botões (principal azul, secundário, perigo), cartões, títulos e mensagens. **Mudar aqui muda o visual do sistema todo.** |
 | `seletor-status.tsx` | A pílula de status que troca na hora e mostra "Salvo ✓". |
 | `aviso.tsx` | Aviso verde de "deu certo" quando a tela recebe `?ok=<código>`. Os códigos e textos ficam aqui. |
+| `bloco-margem.tsx` | Bloco "Só você vê": custo, lucro e margem colorida. Usado no novo orçamento e na tela do orçamento; nunca na página pública. |
 | `estado-vazio.tsx` | Tela vazia padrão: ícone, título, explicação e botão. |
 
 ### Páginas e ações (`src/app/`)
@@ -347,7 +353,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `demo-oficina.ts` | Dados da Oficina Silva: 12 clientes, 25 itens, 18 orçamentos (`npm run demo` / `:producao`). |
 | `demo-marcenaria.ts` | Dados da Madeira Nobre, marcenaria de móveis sob medida e montagem: 12 clientes, 25 itens, 18 orçamentos (`npm run demo:marcenaria` / `:producao`). Login `demo@madeiranobre.com.br`. |
 | `demo/logo-oficina-silva.png`, `demo/logo-madeira-nobre.png` | Logos das empresas de demonstração. |
-| `teste-isolamento.ts` | Teste de vazamento: cria as empresas de teste A e B e, logada como A, tenta abrir, listar e alterar dados da B (repetindo chamadas reais trocando o código do registro). Confere no banco que nada da B mudou e apaga as empresas de teste. Usa `puppeteer-core` e o Google Chrome. |
+| `teste-isolamento.ts` | Teste de vazamento: cria as empresas de teste A e B e, logada como A, tenta abrir, listar e alterar dados da B (repetindo chamadas reais trocando o código do registro). Confere no banco que nada da B mudou. Também confere que o **custo** não aparece na página pública nem no PDF. Apaga as empresas de teste no fim. Usa `puppeteer-core` e o Google Chrome. |
 
 ---
 

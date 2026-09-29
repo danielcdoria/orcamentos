@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { registrarAbertura, visitaContaComoAbertura } from "@/lib/abertura";
 import { prisma } from "@/lib/prisma";
+import { CAMPOS_ORCAMENTO_PUBLICO } from "@/lib/publico";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData, formatarQuantidade } from "@/lib/formatos";
 import { urlBase } from "@/lib/url";
@@ -18,14 +19,12 @@ import { BotaoPdf } from "./botao-pdf";
 // cache(): a busca roda uma vez só, mesmo sendo usada pelo título (generateMetadata) e pela página.
 const buscarOrcamento = cache(async (token: string) => {
   if (!/^[a-f0-9]{64}$/.test(token)) return null; // nem consulta o banco se o formato for inválido
+  // Só os campos que o cliente pode ver (ver src/lib/publico.ts): o custo nem sai do banco.
   return prisma.orcamento.findUnique({
     where: { token },
-    include: {
-      empresa: {
-        select: { nome: true, telefone: true, logoUrl: true, condicaoPagamento: true },
-      },
-      cliente: { select: { nome: true, telefone: true } },
-      itens: { orderBy: { id: "asc" } },
+    select: {
+      ...CAMPOS_ORCAMENTO_PUBLICO,
+      empresa: { select: { nome: true, telefone: true, logoUrl: true, condicaoPagamento: true } },
     },
   });
 });
