@@ -2,14 +2,20 @@
 
 // Montagem do orçamento. Roda no navegador para o total atualizar a cada tecla.
 // Ao salvar, manda só cliente, observação e linhas; o servidor recalcula os valores.
+//
+// OPÇÕES PARA O CLIENTE (tudo a partir do próprio item):
+// - "Dar opções ao cliente": o item vira um cartão de ESCOLHA. Dentro dele se adicionam as
+//   outras opções, e o cliente escolhe 1. A opção marcada (●) é a que já vem escolhida.
+// - "Opcional": o item vira adicional (o cliente marca se quiser).
+// Ao salvar, isso vira tipo / grupo / padrão de cada item (ver src/lib/opcoes.ts).
 
 import Link from "next/link";
-import { useRef, useState, useTransition } from "react";
-import { Plus, Search, Trash2, UserPlus } from "lucide-react";
+import { useState, useTransition } from "react";
+import { ListChecks, Plus, Search, Trash2, Undo2, UserPlus } from "lucide-react";
 import { salvarOrcamento, type DadosOrcamento } from "../actions";
 import { calcularSubtotal, centavosParaTexto, formatarCentavos, lerQuantidade, lerReais } from "@/lib/dinheiro";
 import { calcularMargem } from "@/lib/margem";
-import { chaveGrupo, organizar, padroesEfetivos, TIPOS, type Tipo } from "@/lib/opcoes";
+import { chaveGrupo, padroesEfetivos, type Tipo } from "@/lib/opcoes";
 import { BlocoMargem } from "@/components/bloco-margem";
 import {
   estiloBotao,
@@ -32,12 +38,30 @@ type Linha = {
   quantidadeTexto: string;
   precoTexto: string;
   custoTexto: string; // custo por unidade (opcional; vazio = não informado). Interno.
-  tipo: Tipo; // fixo (padrão), opção de um grupo ou adicional
-  grupo: string; // só para "opcao": nome do grupo, ex.: "Material"
-  padrao: boolean; // só para "opcao": já vem escolhida no grupo
+  tipo: Tipo; // fixo (padrão), opção de uma escolha ou adicional
+  escolha: number | null; // só para "opcao": de qual cartão de escolha faz parte
+  padrao: boolean; // só para "opcao": já vem marcada para o cliente
 };
 
 let proximaChave = 1;
+let proximaEscolha = 1;
+
+// Linha nova a partir de um item do catálogo, ou de um nome digitado (sem preço ainda)
+function novaLinha(origem: ItemCatalogo | string, extra: Partial<Linha> = {}): Linha {
+  const item = typeof origem === "string" ? null : origem;
+  return {
+    chave: proximaChave++,
+    descricao: item ? item.descricao : (origem as string),
+    unidade: item ? item.unidade : "un",
+    quantidadeTexto: "1",
+    precoTexto: item ? centavosParaTexto(item.preco) : "",
+    custoTexto: item?.custo != null ? centavosParaTexto(item.custo) : "", // sugere o custo do catálogo
+    tipo: "fixo",
+    escolha: null,
+    padrao: false,
+    ...extra,
+  };
+}
 
 function subtotalDaLinha(linha: Linha): number | null {
   const quantidade = lerQuantidade(linha.quantidadeTexto);
@@ -57,24 +81,17 @@ export function FormOrcamento({
 }) {
   const [clienteId, setClienteId] = useState(clienteInicial);
   const [linhas, setLinhas] = useState<Linha[]>([]);
+  const [nomesEscolhas, setNomesEscolhas] = useState<Record<number, string>>({}); // ex.: { 1: "Material" }
+  const [escolhaNova, setEscolhaNova] = useState<number | null>(null); // para pôr o cursor na busca dela
   const [observacao, setObservacao] = useState("");
-  const [busca, setBusca] = useState("");
-  // "+ Outra opção de Material": o próximo item escolhido na busca entra como opção deste grupo
-  const [grupoPendente, setGrupoPendente] = useState<string | null>(null);
-  const buscaRef = useRef<HTMLInputElement>(null);
   const [erro, setErro] = useState<string>();
   const [salvando, iniciarSalvar] = useTransition();
 
-  const termo = busca.trim().toLowerCase();
-  const resultados = termo
-    ? catalogo.filter((i) => i.descricao.toLowerCase().includes(termo)).slice(0, 8)
-    : [];
-
   const subtotais = linhas.map(subtotalDaLinha);
 
-  // Opções: em cada grupo, qual já vem escolhida. O total mostra o que o cliente vê ao abrir:
-  // fixos + a opção padrão de cada grupo (adicionais só entram se ele marcar).
-  const padroes = padroesEfetivos(linhas);
+  // Em cada escolha, qual opção já vem marcada. O total mostra o que o cliente vê ao abrir:
+  // fixos + a opção marcada de cada escolha (opcionais só entram se ele marcar).
+  const padroes = padroesEfetivos(linhas.map((l) => ({ tipo: l.tipo, grupo: String(l.escolha), padrao: l.padrao })));
   const incluido = linhas.map((l, i) => (l.tipo === "opcao" ? padroes[i] : l.tipo === "fixo"));
   const total = subtotais.reduce<number>((soma, s, i) => soma + (incluido[i] ? (s ?? 0) : 0), 0);
   const temOpcoes = linhas.some((l) => l.tipo !== "fixo");
@@ -82,16 +99,6 @@ export function FormOrcamento({
     (soma, s, i) => soma + (linhas[i].tipo === "adicional" ? (s ?? 0) : 0),
     0,
   );
-  // nomes de grupo já usados, para sugerir ao digitar
-  const nomesGrupos = [...new Map(linhas.filter((l) => l.grupo.trim()).map((l) => [chaveGrupo(l.grupo), l.grupo.trim()])).values()];
-  // quantas opções cada grupo tem, e qual é a última linha de cada grupo (onde fica o botão "+ Outra opção")
-  const tamanhoGrupo = new Map<string, number>();
-  const ultimaDoGrupo = new Map<string, number>();
-  for (const l of linhas) {
-    if (l.tipo !== "opcao") continue;
-    tamanhoGrupo.set(chaveGrupo(l.grupo), (tamanhoGrupo.get(chaveGrupo(l.grupo)) ?? 0) + 1);
-    ultimaDoGrupo.set(chaveGrupo(l.grupo), l.chave);
-  }
 
   // Custo, lucro e margem (só aparece se algum item tiver custo preenchido).
   // Considera o que está incluído no total.
@@ -105,62 +112,68 @@ export function FormOrcamento({
       .filter((_, i) => incluido[i]),
   );
 
+  // Blocos da tela, na ordem: itens soltos e cartões de escolha (com todas as opções juntas)
+  type Posicao = { linha: Linha; i: number };
+  const blocos: ({ tipo: "item"; item: Posicao } | { tipo: "escolha"; id: number; opcoes: Posicao[] })[] = [];
+  const escolhasVistas = new Set<number>();
+  linhas.forEach((linha, i) => {
+    if (linha.tipo !== "opcao" || linha.escolha === null) return blocos.push({ tipo: "item", item: { linha, i } });
+    if (escolhasVistas.has(linha.escolha)) return;
+    escolhasVistas.add(linha.escolha);
+    const opcoes = linhas.flatMap((l, k) => (l.escolha === linha.escolha ? [{ linha: l, i: k }] : []));
+    blocos.push({ tipo: "escolha", id: linha.escolha, opcoes });
+  });
+
   // Toda mudança nas linhas apaga o erro antigo (ele pode nem valer mais)
   function mudarLinhas(mudanca: (atual: Linha[]) => Linha[]) {
     setErro(undefined);
     setLinhas(mudanca);
   }
 
-  function adicionar(item: ItemCatalogo) {
-    const nova: Linha = {
-      chave: proximaChave++,
-      descricao: item.descricao,
-      unidade: item.unidade,
-      quantidadeTexto: "1",
-      precoTexto: centavosParaTexto(item.preco),
-      custoTexto: item.custo !== null ? centavosParaTexto(item.custo) : "", // sugere o custo do catálogo
-      tipo: grupoPendente ? "opcao" : "fixo",
-      grupo: grupoPendente ?? "",
-      padrao: false,
-    };
+  function adicionar(origem: ItemCatalogo | string) {
+    mudarLinhas((atual) => [...atual, novaLinha(origem)]);
+  }
+
+  // Outra opção dentro de um cartão de escolha: entra logo depois da última opção dele
+  function adicionarOpcao(escolha: number, origem: ItemCatalogo | string) {
     mudarLinhas((atual) => {
-      if (!grupoPendente) return [...atual, nova];
-      // outra opção de um grupo: entra logo depois da última opção desse grupo
-      const depois = atual.findLastIndex((l) => l.tipo === "opcao" && chaveGrupo(l.grupo) === chaveGrupo(grupoPendente));
-      return depois === -1 ? [...atual, nova] : [...atual.slice(0, depois + 1), nova, ...atual.slice(depois + 1)];
+      const nova = novaLinha(origem, { tipo: "opcao", escolha });
+      const depois = atual.findLastIndex((l) => l.escolha === escolha);
+      return [...atual.slice(0, depois + 1), nova, ...atual.slice(depois + 1)];
     });
-    setGrupoPendente(null);
-    setBusca("");
   }
 
-  function pedirOutraOpcao(grupo: string) {
-    setGrupoPendente(grupo.trim());
-    setBusca("");
-    buscaRef.current?.focus();
-    buscaRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
-  }
-
-  function alterar(chave: number, campo: "quantidadeTexto" | "precoTexto" | "custoTexto" | "grupo", valor: string) {
+  function alterar(chave: number, campo: "quantidadeTexto" | "precoTexto" | "custoTexto", valor: string) {
     mudarLinhas((atual) => atual.map((l) => (l.chave === chave ? { ...l, [campo]: valor } : l)));
   }
 
-  function mudarTipo(chave: number, tipo: Tipo) {
-    mudarLinhas((atual) => {
-      // Ao virar "Opção", já sugere o último grupo usado (quase sempre é o mesmo)
-      const ultimoGrupo = atual.findLast((l) => l.chave !== chave && l.tipo === "opcao")?.grupo ?? "";
-      return atual.map((l) =>
-        l.chave === chave ? { ...l, tipo, grupo: tipo === "opcao" && !l.grupo ? ultimoGrupo : l.grupo } : l,
-      );
-    });
+  // O item vira um cartão de escolha; ele mesmo é a primeira opção (já vem marcada)
+  function darOpcoes(chave: number) {
+    const id = proximaEscolha++;
+    mudarLinhas((atual) =>
+      atual.map((l) => (l.chave === chave ? { ...l, tipo: "opcao", escolha: id, padrao: true } : l)),
+    );
+    setEscolhaNova(id);
   }
 
-  // Marca esta opção como a padrão do grupo (e desmarca as outras do mesmo grupo)
-  function tornarPadrao(chave: number) {
+  // Volta todas as opções do cartão a itens comuns
+  function desfazerEscolha(escolha: number) {
+    mudarLinhas((atual) =>
+      atual.map((l) => (l.escolha === escolha ? { ...l, tipo: "fixo", escolha: null, padrao: false } : l)),
+    );
+  }
+
+  function alternarOpcional(chave: number) {
+    mudarLinhas((atual) =>
+      atual.map((l) => (l.chave === chave ? { ...l, tipo: l.tipo === "adicional" ? "fixo" : "adicional" } : l)),
+    );
+  }
+
+  // Marca qual opção já vem escolhida para o cliente (e desmarca as outras do cartão)
+  function marcarPadrao(chave: number) {
     mudarLinhas((atual) => {
-      const grupo = chaveGrupo(atual.find((l) => l.chave === chave)?.grupo ?? "");
-      return atual.map((l) =>
-        l.tipo === "opcao" && chaveGrupo(l.grupo) === grupo ? { ...l, padrao: l.chave === chave } : l,
-      );
+      const escolha = atual.find((l) => l.chave === chave)?.escolha;
+      return atual.map((l) => (l.tipo === "opcao" && l.escolha === escolha ? { ...l, padrao: l.chave === chave } : l));
     });
   }
 
@@ -168,10 +181,40 @@ export function FormOrcamento({
     mudarLinhas((atual) => atual.filter((l) => l.chave !== chave));
   }
 
+  // Nome de cada escolha para o cliente ver. Sem nome: "Opções", "Opções 2"...
+  function nomesFinais(): Map<number, string> {
+    const nomes = new Map<number, string>();
+    const usados = new Set(Object.values(nomesEscolhas).map(chaveGrupo).filter(Boolean));
+    let semNome = 0;
+    for (const b of blocos) {
+      if (b.tipo !== "escolha") continue;
+      let nome = (nomesEscolhas[b.id] ?? "").trim().replace(/\s+/g, " ");
+      while (!nome) {
+        semNome++;
+        const sugestao = semNome === 1 ? "Opções" : `Opções ${semNome}`;
+        if (!usados.has(chaveGrupo(sugestao))) nome = sugestao;
+      }
+      nomes.set(b.id, nome);
+    }
+    return nomes;
+  }
+
   function salvar() {
     setErro(undefined);
     if (!clienteId) return setErro("Escolha o cliente.");
     if (linhas.length === 0) return setErro("Adicione pelo menos um item.");
+
+    const nomes = nomesFinais();
+    const vistos = new Set<string>();
+    for (const [id, nome] of nomes) {
+      if (vistos.has(chaveGrupo(nome))) {
+        return setErro(`Duas escolhas com o mesmo nome (“${nome}”). Troque o nome de uma delas.`);
+      }
+      vistos.add(chaveGrupo(nome));
+      if (linhas.filter((l) => l.escolha === id).length < 2) {
+        return setErro(`A escolha “${nome}” tem só uma opção. Adicione outra opção nela ou toque em “Desfazer”.`);
+      }
+    }
 
     const dados: DadosOrcamento["linhas"] = [];
     for (const [i, l] of linhas.entries()) {
@@ -184,29 +227,80 @@ export function FormOrcamento({
       if (l.custoTexto.trim() && custo === null) {
         return setErro(`Item ${i + 1} (${l.descricao}): o custo está errado. Use o formato 12,50 ou deixe vazio.`);
       }
-      if (l.tipo === "opcao" && !l.grupo.trim()) {
-        return setErro(`Item ${i + 1} (${l.descricao}): escreva o nome do grupo (ex.: Material).`);
-      }
       dados.push({
         descricao: l.descricao,
         quantidade: l.quantidadeTexto,
         precoUnitario: preco,
         custoUnitario: custo,
         tipo: l.tipo,
-        grupo: l.grupo,
+        grupo: l.escolha !== null ? nomes.get(l.escolha) : undefined,
         padrao: padroes[i],
       });
-    }
-    for (const g of organizar(linhas).grupos) {
-      if (g.itens.length < 2) {
-        return setErro(`O grupo “${g.nome}” tem só uma opção. Adicione outra ou marque o item como Fixo.`);
-      }
     }
 
     iniciarSalvar(async () => {
       const resultado = await salvarOrcamento({ clienteId, observacao, linhas: dados });
       if (resultado?.erro) setErro(resultado.erro);
     });
+  }
+
+  // Quantidade, preço, custo e subtotal de uma linha (igual para item solto e para opção).
+  // É uma função comum, e não um componente, para os campos não perderem o foco ao digitar.
+  function campos(linha: Linha, i: number, rotuloSubtotal: string) {
+    return (
+      <>
+        <div className="mt-3 grid grid-cols-3 items-end gap-2">
+          <label className="flex flex-col gap-1">
+            <span className="text-sm text-gray-600">Qtd ({linha.unidade})</span>
+            <input
+              inputMode="decimal"
+              value={linha.quantidadeTexto}
+              onChange={(e) => alterar(linha.chave, "quantidadeTexto", e.target.value)}
+              className={estiloCampo}
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-sm text-gray-600">Preço (R$)</span>
+            <input
+              inputMode="decimal"
+              value={linha.precoTexto}
+              placeholder="0,00"
+              onChange={(e) => alterar(linha.chave, "precoTexto", e.target.value)}
+              className={estiloCampo}
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-sm text-gray-600">Custo (opcional)</span>
+            <input
+              inputMode="decimal"
+              placeholder="—"
+              value={linha.custoTexto}
+              onChange={(e) => alterar(linha.chave, "custoTexto", e.target.value)}
+              className={`${estiloCampo} border-dashed`}
+            />
+          </label>
+        </div>
+        <div className="mt-3 flex justify-between gap-3 text-base">
+          <span className="text-gray-600">{rotuloSubtotal}</span>
+          <span className="font-semibold">
+            {subtotais[i] === null ? "confira os números" : formatarCentavos(subtotais[i])}
+          </span>
+        </div>
+      </>
+    );
+  }
+
+  function botaoRemover(linha: Linha) {
+    return (
+      <button
+        type="button"
+        onClick={() => remover(linha.chave)}
+        aria-label={`Tirar ${linha.descricao}`}
+        className="-mt-1 -mr-2 flex size-11 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-700"
+      >
+        <Trash2 className="size-5" aria-hidden />
+      </button>
+    );
   }
 
   return (
@@ -238,192 +332,122 @@ export function FormOrcamento({
         <label htmlFor="busca" className={estiloRotulo}>
           O que vai no orçamento?
         </label>
-        {grupoPendente && (
-          <div className="flex items-center justify-between gap-3 rounded-xl bg-blue-50 px-4 py-2 text-base text-marca">
-            <span>Busque abaixo a outra opção de “{grupoPendente}”.</span>
-            <button type="button" onClick={() => setGrupoPendente(null)} className="min-h-11 shrink-0 font-medium underline">
-              Cancelar
-            </button>
-          </div>
-        )}
-        <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-gray-400" aria-hidden />
-          <input
-            id="busca"
-            ref={buscaRef}
-            type="search"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder={grupoPendente ? "Ex.: MDF resistente" : "Digite o nome do produto ou serviço"}
-            className={`${estiloCampo} pl-12`}
-          />
-        </div>
-        {termo && (
-          <ul className={`${estiloCartao} divide-y divide-gray-200 overflow-hidden`}>
-            {resultados.length === 0 && (
-              <li className="px-4 py-4 text-base text-gray-600">
-                Nada com “{busca.trim()}” no catálogo.{" "}
-                <Link href="/catalogo/novo" className="font-medium underline">
-                  Cadastrar no catálogo
-                </Link>
-              </li>
-            )}
-            {resultados.map((item) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => adicionar(item)}
-                  className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
-                >
-                  <Plus className="size-5 shrink-0 text-gray-500" aria-hidden />
-                  <span className="flex-1 text-base">{item.descricao}</span>
-                  <span className="shrink-0 text-base text-gray-600">
-                    {formatarCentavos(item.preco)}/{item.unidade}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <BuscaCatalogo id="busca" catalogo={catalogo} placeholder="Digite o nome do produto ou serviço" aoEscolher={adicionar} />
       </div>
 
-      {/* Linhas do orçamento */}
+      {/* Itens e cartões de escolha */}
       {linhas.length === 0 ? (
         <p className="rounded-2xl border-2 border-dashed border-gray-300 px-4 py-6 text-center text-base text-gray-600">
           Nenhum item ainda. Digite acima o nome do que vai no orçamento e toque nele para adicionar.
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {linhas.map((linha, i) => (
-            <li key={linha.chave} className={`${estiloCartao} p-4`}>
-              <div className="flex items-start justify-between gap-3">
-                <span className="pt-2 text-base font-semibold">{linha.descricao}</span>
+          {blocos.map((bloco) => {
+            if (bloco.tipo === "item") {
+              const { linha, i } = bloco.item;
+              return (
+                <li key={linha.chave} className={`${estiloCartao} p-4`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="pt-2 text-base font-semibold">{linha.descricao}</span>
+                    {botaoRemover(linha)}
+                  </div>
+                  {campos(linha, i, linha.tipo === "adicional" ? "Subtotal (se o cliente marcar)" : "Subtotal")}
+                  {/* Opções para o cliente, a partir deste item */}
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-gray-100 pt-2">
+                    <label className="flex min-h-11 cursor-pointer items-center gap-2 text-base text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={linha.tipo === "adicional"}
+                        onChange={() => alternarOpcional(linha.chave)}
+                        className="size-5 accent-marca"
+                      />
+                      Opcional: o cliente marca se quiser
+                    </label>
+                    {linha.tipo === "fixo" && (
+                      <button
+                        type="button"
+                        onClick={() => darOpcoes(linha.chave)}
+                        className="flex min-h-11 items-center gap-2 text-base font-medium text-marca"
+                      >
+                        <ListChecks className="size-5" aria-hidden />
+                        Dar opções ao cliente
+                      </button>
+                    )}
+                  </div>
+                </li>
+              );
+            }
+            return (
+              <li key={`escolha-${bloco.id}`} className="rounded-2xl border-2 border-blue-200 bg-white p-4">
+                <p className="flex items-center gap-2 text-base font-semibold">
+                  <ListChecks className="size-5 text-marca" aria-hidden />O cliente escolhe 1 destas opções
+                </p>
+                <label className="mt-3 flex flex-col gap-1">
+                  <span className="text-sm text-gray-600">Nome da escolha (o cliente vê; pode deixar vazio)</span>
+                  <input
+                    value={nomesEscolhas[bloco.id] ?? ""}
+                    maxLength={60}
+                    placeholder="Ex.: Material, Cor, Acabamento"
+                    onChange={(e) => {
+                      setErro(undefined);
+                      setNomesEscolhas((atual) => ({ ...atual, [bloco.id]: e.target.value }));
+                    }}
+                    className={estiloCampo}
+                  />
+                </label>
+                <p className="mt-3 text-sm text-gray-600">A opção marcada ● já vem escolhida quando o cliente abre.</p>
+                <ul className="mt-2 flex flex-col gap-2">
+                  {bloco.opcoes.map(({ linha, i }) => (
+                    <li key={linha.chave} className="rounded-xl bg-gray-50 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <label className="flex min-h-11 flex-1 cursor-pointer items-start gap-3 pt-2">
+                          <input
+                            type="radio"
+                            name={`padrao-${bloco.id}`}
+                            checked={padroes[i]}
+                            onChange={() => marcarPadrao(linha.chave)}
+                            aria-label={`${linha.descricao} já vem marcada`}
+                            className="mt-0.5 size-5 shrink-0 accent-marca"
+                          />
+                          <span className="text-base font-semibold">
+                            {linha.descricao}
+                            {padroes[i] && (
+                              <span className="ml-2 inline-block rounded-full bg-green-50 px-2 py-0.5 text-sm font-medium text-green-800">
+                                já vem marcada
+                              </span>
+                            )}
+                          </span>
+                        </label>
+                        {botaoRemover(linha)}
+                      </div>
+                      {campos(linha, i, padroes[i] ? "Subtotal" : "Subtotal (se o cliente escolher)")}
+                    </li>
+                  ))}
+                </ul>
+                {bloco.opcoes.length < 2 && (
+                  <p className="mt-3 text-base font-medium text-amber-900">Agora adicione a outra opção:</p>
+                )}
+                <div className="mt-2">
+                  <BuscaCatalogo
+                    catalogo={catalogo}
+                    placeholder="Adicionar outra opção (ex.: MDF resistente)"
+                    autoFocus={escolhaNova === bloco.id}
+                    aoEscolher={(origem) => adicionarOpcao(bloco.id, origem)}
+                  />
+                </div>
                 <button
                   type="button"
-                  onClick={() => remover(linha.chave)}
-                  aria-label={`Tirar ${linha.descricao}`}
-                  className="-mt-1 -mr-2 flex size-11 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => desfazerEscolha(bloco.id)}
+                  className="mt-2 flex min-h-11 items-center gap-2 text-base text-gray-700 underline underline-offset-2"
                 >
-                  <Trash2 className="size-5" aria-hidden />
+                  <Undo2 className="size-5" aria-hidden />
+                  Desfazer (voltar a itens comuns)
                 </button>
-              </div>
-              <div className="mt-3 grid grid-cols-3 items-end gap-2">
-                <label className="flex flex-col gap-1">
-                  <span className="text-sm text-gray-600">Qtd ({linha.unidade})</span>
-                  <input
-                    inputMode="decimal"
-                    value={linha.quantidadeTexto}
-                    onChange={(e) => alterar(linha.chave, "quantidadeTexto", e.target.value)}
-                    className={estiloCampo}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-sm text-gray-600">Preço (R$)</span>
-                  <input
-                    inputMode="decimal"
-                    value={linha.precoTexto}
-                    onChange={(e) => alterar(linha.chave, "precoTexto", e.target.value)}
-                    className={estiloCampo}
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-sm text-gray-600">Custo (opcional)</span>
-                  <input
-                    inputMode="decimal"
-                    placeholder="—"
-                    value={linha.custoTexto}
-                    onChange={(e) => alterar(linha.chave, "custoTexto", e.target.value)}
-                    className={`${estiloCampo} border-dashed`}
-                  />
-                </label>
-              </div>
-              {/* Tipo: fixo (sempre entra), opção de um grupo (o cliente escolhe 1) ou adicional */}
-              <div
-                role="radiogroup"
-                aria-label={`Tipo de ${linha.descricao}`}
-                className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1"
-              >
-                {TIPOS.map((t) => (
-                  <button
-                    key={t.valor}
-                    type="button"
-                    role="radio"
-                    aria-checked={linha.tipo === t.valor}
-                    onClick={() => mudarTipo(linha.chave, t.valor)}
-                    className={`min-h-11 rounded-lg text-base font-medium ${
-                      linha.tipo === t.valor ? "bg-white text-gray-900 shadow-sm" : "text-gray-600"
-                    }`}
-                  >
-                    {t.rotulo}
-                  </button>
-                ))}
-              </div>
-              {linha.tipo === "opcao" && (
-                <div className="mt-2 flex items-end gap-2">
-                  <label className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="text-sm text-gray-600">Grupo (o cliente escolhe 1)</span>
-                    <input
-                      list="grupos-do-orcamento"
-                      value={linha.grupo}
-                      maxLength={60}
-                      placeholder="Ex.: Material"
-                      onChange={(e) => alterar(linha.chave, "grupo", e.target.value)}
-                      className={estiloCampo}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    aria-pressed={padroes[i]}
-                    onClick={() => tornarPadrao(linha.chave)}
-                    className={`min-h-12 shrink-0 rounded-xl px-3 text-base font-medium ring-1 ${
-                      padroes[i] ? "bg-green-50 text-green-800 ring-green-300" : "text-gray-700 ring-gray-300"
-                    }`}
-                  >
-                    {padroes[i] ? "✓ Padrão" : "Tornar padrão"}
-                  </button>
-                </div>
-              )}
-              {linha.tipo === "opcao" && ultimaDoGrupo.get(chaveGrupo(linha.grupo)) === linha.chave && (
-                <div className="mt-2 flex flex-col gap-1">
-                  {tamanhoGrupo.get(chaveGrupo(linha.grupo)) === 1 && (
-                    <p className="text-sm text-amber-900">Falta a outra opção: o grupo precisa de pelo menos 2.</p>
-                  )}
-                  <button
-                    type="button"
-                    disabled={!linha.grupo.trim()}
-                    onClick={() => pedirOutraOpcao(linha.grupo)}
-                    className={`${estiloBotaoSecundario} w-full`}
-                  >
-                    <Plus className="size-5" aria-hidden />
-                    {linha.grupo.trim() ? `Outra opção de “${linha.grupo.trim()}”` : "Escreva o nome do grupo acima"}
-                  </button>
-                </div>
-              )}
-              {linha.tipo === "adicional" && (
-                <p className="mt-2 text-sm text-gray-600">O cliente marca se quiser. Só entra no total se ele marcar.</p>
-              )}
-              <div className="mt-3 flex justify-between text-base">
-                <span className="text-gray-600">
-                  {linha.tipo === "opcao" && !padroes[i]
-                    ? "Subtotal (se o cliente escolher)"
-                    : linha.tipo === "adicional"
-                      ? "Subtotal (se o cliente marcar)"
-                      : "Subtotal"}
-                </span>
-                <span className="font-semibold">
-                  {subtotais[i] === null ? "confira os números" : formatarCentavos(subtotais[i])}
-                </span>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
-
-      <datalist id="grupos-do-orcamento">
-        {nomesGrupos.map((nome) => (
-          <option key={nome} value={nome} />
-        ))}
-      </datalist>
 
       {/* Total */}
       <div className={`${estiloCartao} px-5 py-5`}>
@@ -433,8 +457,8 @@ export function FormOrcamento({
         </div>
         {temOpcoes && (
           <p className="mt-2 text-sm text-gray-600">
-            Com as opções padrão. O cliente pode trocar na página do orçamento e o total muda na hora.
-            {totalAdicionais > 0 && ` Adicionais, se ele marcar todos: + ${formatarCentavos(totalAdicionais)}.`}
+            Com as opções que já vêm marcadas. O cliente pode trocar na página do orçamento e o total muda na hora.
+            {totalAdicionais > 0 && ` Opcionais, se ele marcar todos: + ${formatarCentavos(totalAdicionais)}.`}
           </p>
         )}
       </div>
@@ -465,6 +489,87 @@ export function FormOrcamento({
           Cancelar
         </Link>
       </div>
+    </div>
+  );
+}
+
+// Busca no catálogo com a lista de resultados. Se não achar, deixa usar o nome digitado
+// só neste orçamento (a pessoa põe o preço), sem sair da tela.
+function BuscaCatalogo({
+  id,
+  catalogo,
+  placeholder,
+  autoFocus,
+  aoEscolher,
+}: {
+  id?: string;
+  catalogo: ItemCatalogo[];
+  placeholder: string;
+  autoFocus?: boolean;
+  aoEscolher: (origem: ItemCatalogo | string) => void;
+}) {
+  const [busca, setBusca] = useState("");
+  const digitado = busca.trim();
+  const termo = digitado.toLowerCase();
+  const resultados = termo ? catalogo.filter((i) => i.descricao.toLowerCase().includes(termo)).slice(0, 8) : [];
+  const existeIgual = resultados.some((i) => i.descricao.toLowerCase() === termo);
+
+  function escolher(origem: ItemCatalogo | string) {
+    aoEscolher(origem);
+    setBusca("");
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="relative">
+        <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-gray-400" aria-hidden />
+        <input
+          id={id}
+          type="search"
+          value={busca}
+          autoFocus={autoFocus} // a pessoa acabou de pedir para dar opções: o próximo passo é buscar a outra
+          aria-label={id ? undefined : placeholder}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder={placeholder}
+          className={`${estiloCampo} pl-12`}
+        />
+      </div>
+      {termo && (
+        <ul className={`${estiloCartao} divide-y divide-gray-200 overflow-hidden`}>
+          {resultados.map((item) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                onClick={() => escolher(item)}
+                className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
+              >
+                <Plus className="size-5 shrink-0 text-gray-500" aria-hidden />
+                <span className="flex-1 text-base">{item.descricao}</span>
+                <span className="shrink-0 text-base text-gray-600">
+                  {formatarCentavos(item.preco)}/{item.unidade}
+                </span>
+              </button>
+            </li>
+          ))}
+          {!existeIgual && digitado.length <= 200 && (
+            <li>
+              <button
+                type="button"
+                onClick={() => escolher(digitado)}
+                className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
+              >
+                <Plus className="size-5 shrink-0 text-gray-500" aria-hidden />
+                <span className="flex-1 text-base">
+                  Usar “{digitado}”
+                  <span className="block text-sm text-gray-600">
+                    {resultados.length === 0 ? "Não está no catálogo. " : ""}Você digita o preço aqui.
+                  </span>
+                </span>
+              </button>
+            </li>
+          )}
+        </ul>
+      )}
     </div>
   );
 }

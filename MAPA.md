@@ -141,8 +141,10 @@ cada registro. Por isso estas regras são tão importantes.
    itens do catálogo, ajusta quantidade e preço, e vê o total mudar na hora
    (`calcularSubtotal` em `src/lib/dinheiro.ts`). Cliente novo? O link "Cliente novo? Cadastrar"
    vai para `/clientes/novo?voltar=orcamento` e volta com o cliente já escolhido.
-   Cada item tem um **tipo**: Fixo (sempre entra), Opção (de um grupo, ex.: "Material"; o
-   cliente escolhe 1, e uma delas é a "padrão") ou Adicional (o cliente marca se quiser). As
+   Opções para o cliente, a partir de cada item: **"Dar opções ao cliente"** cria um cartão de
+   escolha (as outras opções são adicionadas dentro dele; o cliente escolhe 1, e a marcada ●
+   já vem escolhida) e **"Opcional"** vira adicional (o cliente marca se quiser). No banco, isso
+   é o tipo de cada item: fixo, opcao (com o nome do grupo, ex.: "Material") ou adicional. As
    regras de grupo, padrão e total ficam em `src/lib/opcoes.ts`.
 3. Ao salvar, chama `salvarOrcamento` (`src/app/(app)/orcamentos/actions.ts`), que:
    - confere o login e que o cliente é **desta** empresa;
@@ -328,7 +330,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `actions.ts` | `sair`: apaga a sessão. |
 | `orcamentos/page.tsx` | Lista de orçamentos (mais recentes primeiro), faixa de cobrança pendente, pílula de status e "Viu / Não viu". |
 | `orcamentos/novo/page.tsx` | Tela de novo orçamento (explica o que falta se não houver cliente ou catálogo). |
-| `orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento com total ao vivo (passo 1): custo, tipo do item (Fixo / Opção / Adicional), grupo e padrão. O botão "+ Outra opção de …" faz o próximo item buscado entrar como opção do mesmo grupo. |
+| `orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento com total ao vivo (passo 1): custo; "Opcional" (adicional) e "Dar opções ao cliente", que transforma o item num cartão de escolha onde se adicionam as outras opções (a marcada ● já vem escolhida). Se o item não está no catálogo, dá para usar o nome digitado e pôr o preço na hora. |
 | `orcamentos/[id]/page.tsx` | Um orçamento: total, escolha do cliente (e o sinal "mexeu nas opções"), margem, envio, "Ver como o cliente vê", PDF, itens (por grupo), observação e histórico. |
 | `orcamentos/[id]/botoes-envio.tsx` | "Enviar no WhatsApp" e "Copiar link do orçamento". |
 | `orcamentos/actions.ts` | `salvarOrcamento`, `marcarEnviado`, `alterarStatus`. |
