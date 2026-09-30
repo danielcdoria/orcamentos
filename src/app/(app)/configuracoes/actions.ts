@@ -16,6 +16,8 @@ export async function salvarEmpresa(_estado: EstadoForm, formData: FormData): Pr
     condicaoPagamento: texto("condicaoPagamento"),
     diasValidade: texto("diasValidade"),
     mensagemEnvio: texto("mensagemEnvio"),
+    chavePix: texto("chavePix").replace(/\s+/g, ""), // nenhum tipo de chave tem espaço: tira os digitados
+    nomeRecebedorPix: texto("nomeRecebedorPix").replace(/\s+/g, " "),
   };
   const falhar = (erro: string): EstadoForm => ({ erro, valores });
 
@@ -30,6 +32,12 @@ export async function salvarEmpresa(_estado: EstadoForm, formData: FormData): Pr
     return falhar("A mensagem precisa ter a palavra {link}. É ela que vira o link do orçamento; sem ela, o cliente recebe a mensagem sem o orçamento.");
   }
   if (valores.mensagemEnvio.length > 1000) return falhar("Mensagem muito longa.");
+  // Pix: só texto exibido no orçamento
+  if (valores.chavePix.length > 100) return falhar("Chave Pix muito longa. Confira se copiou só a chave.");
+  if (valores.nomeRecebedorPix.length > 100) return falhar("Nome do recebedor muito longo.");
+  if (valores.nomeRecebedorPix && !valores.chavePix) {
+    return falhar("Preencha a chave Pix (ou apague o nome do recebedor).");
+  }
 
   await prisma.empresa.update({
     where: { id: empresaId },
@@ -39,6 +47,8 @@ export async function salvarEmpresa(_estado: EstadoForm, formData: FormData): Pr
       condicaoPagamento: valores.condicaoPagamento || null,
       diasValidade: dias,
       mensagemEnvio: valores.mensagemEnvio,
+      chavePix: valores.chavePix || null,
+      nomeRecebedorPix: valores.nomeRecebedorPix || null,
     },
   });
 

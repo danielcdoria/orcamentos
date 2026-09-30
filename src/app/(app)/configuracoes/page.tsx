@@ -32,6 +32,8 @@ export default async function PaginaConfiguracoes() {
             condicaoPagamento: empresa.condicaoPagamento ?? "",
             diasValidade: String(empresa.diasValidade),
             mensagemEnvio: empresa.mensagemEnvio,
+            chavePix: empresa.chavePix ?? "",
+            nomeRecebedorPix: empresa.nomeRecebedorPix ?? "",
           }}
         />
       </section>

@@ -221,7 +221,7 @@ e os enviados, fechados e a taxa de fechamento **entre os enviados no mês atual
 
 | Tabela | O que guarda |
 |---|---|
-| `Empresa` | Cada empresa cliente: nome, telefone, condição de pagamento, dias de validade, mensagem de envio, prazos de cobrança (1ª, 2ª, desistir) e os 4 modelos de mensagem de cobrança. |
+| `Empresa` | Cada empresa cliente: nome, telefone, condição de pagamento, dias de validade, mensagem de envio, prazos de cobrança (1ª, 2ª, desistir), os 4 modelos de mensagem de cobrança e o Pix (chave e nome do recebedor, opcionais, só para exibir). |
 | `EmpresaLogo` | A imagem do logo (PNG/JPG), separada para não pesar nas outras consultas. |
 | `Usuario` | O login da empresa (um por empresa): email, hash da senha, contador de tentativas erradas e bloqueio. |
 | `Sessao` | Cada login aberto (um celular, um computador). Guarda o hash do código do cookie. Dura 30 dias. |
@@ -349,7 +349,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `catalogo/form-item.tsx` | Formulário de item (nome, preço, "cobrado por"). |
 | `catalogo/actions.ts` | `salvarItem`, `apagarItem`. |
 | `configuracoes/page.tsx` | Tela **Ajustes**: logo, dados da empresa, cobrança e "Sair do sistema". |
-| `configuracoes/form-empresa.tsx` | Nome, telefone, condição de pagamento, validade e mensagem de envio (com exemplo ao vivo). |
+| `configuracoes/form-empresa.tsx` | Nome, telefone, condição de pagamento, Pix (chave e recebedor, opcionais), validade e mensagem de envio (com exemplo ao vivo). |
 | `configuracoes/form-cobranca.tsx` | Prazos (1ª, 2ª, desistir) e os 4 modelos de cobrança. |
 | `configuracoes/logo.tsx` | Enviar/trocar/remover logo; reduz a imagem no navegador (512px, PNG). |
 | `configuracoes/actions.ts` | `salvarEmpresa`, `salvarCobranca`, `salvarLogo` (confere se é mesmo PNG/JPG/WebP), `removerLogo`. |
@@ -361,6 +361,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `src/app/orcamento/[token]/botao-pdf.tsx` | O botão "Baixar PDF". |
 | `src/app/orcamento/[token]/escolha.tsx` | Orçamento com opções, no navegador: guarda a escolha, mostra grupos e adicionais com botões grandes, o total ao vivo, o aviso "Sua escolha foi salva" e os botões WhatsApp/PDF que salvam antes de sair. |
 | `src/app/orcamento/[token]/actions.ts` | `salvarEscolha`: a ação **pública** que grava a escolha do cliente (ver passo 3, item 6). |
+| `src/app/orcamento/[token]/bloco-pix.tsx` | Bloco "Pagamento por Pix" depois do total (só se a empresa preencheu a chave): chave, recebedor e "Copiar chave Pix" (com plano B para celular sem https). Só exibição. |
 | `src/app/orcamento/[token]/blocos.tsx` | Peças usadas nos dois modos da página: caixa do total e botão "Responder no WhatsApp". |
 | `src/app/orcamento/[token]/not-found.tsx` | Mensagem para o cliente quando o link está errado (sem caminho para o login). |
 | `src/app/orcamento/[token]/pdf/route.ts` | Gera e devolve o PDF (`orcamento-14-oficina-silva.pdf`). |
@@ -429,3 +430,5 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 - **Bloqueio de login** (5 erros → 15 min) pode ser usado para trancar a conta de alguém por
   15 minutos. Troca aceita em nome da segurança.
 - A taxa de fechamento conta **os enviados no mês que fecharam** (fica sempre entre 0% e 100%).
+- **Pix é só exibição** (decisão do produto): a chave aparece no orçamento com botão de copiar.
+  Nada de provedor de pagamento, QR code ou confirmação de pagamento. O PDF não mostra o Pix.

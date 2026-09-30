@@ -24,6 +24,11 @@ model Empresa {
   diasValidade      Int      @default(15) // validade padrão dos orçamentos, em dias
   criadoEm          DateTime @default(now())
 
+  // PIX (opcional): só é MOSTRADO na página do orçamento, com um botão de copiar a chave.
+  // O sistema não recebe, não gera QR code e não confere pagamento nenhum.
+  chavePix         String?
+  nomeRecebedorPix String? // nome que o banco do cliente mostra ao pagar (ajuda a confiar)
+
   // Mensagem do botão "Enviar no WhatsApp". {cliente}, {link} etc. são trocados na hora.
   mensagemEnvio String @default("Olá {nome}, segue o orçamento que combinamos: {link}")
 

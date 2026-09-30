@@ -11,6 +11,8 @@ type Empresa = {
   condicaoPagamento: string;
   diasValidade: string;
   mensagemEnvio: string;
+  chavePix: string;
+  nomeRecebedorPix: string;
 };
 
 export function FormEmpresa({ empresa }: { empresa: Empresa }) {
@@ -59,6 +61,39 @@ export function FormEmpresa({ empresa }: { empresa: Empresa }) {
         />
         <span className="text-sm text-gray-600">Aparece em todos os orçamentos.</span>
       </label>
+
+      {/* Pix: só exibido no orçamento, com botão de copiar. Nada de receber ou conferir pagamento. */}
+      <fieldset className="flex flex-col gap-4 rounded-xl border border-gray-200 px-4 py-4">
+        <legend className="px-1 text-base font-medium text-gray-800">Pix (opcional)</legend>
+        <p className="-mt-2 text-sm text-gray-600">
+          Se preencher a chave, o orçamento mostra ela com um botão “Copiar chave Pix”. O sistema não recebe nem
+          confere pagamentos: o cliente paga direto no banco dele.
+        </p>
+        <label className="flex flex-col gap-2">
+          <span className={estiloRotulo}>Chave Pix</span>
+          <input
+            name="chavePix"
+            maxLength={100}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder="CNPJ, CPF, e-mail, celular ou chave aleatória"
+            defaultValue={v.chavePix}
+            className={estiloCampo}
+          />
+        </label>
+        <label className="flex flex-col gap-2">
+          <span className={estiloRotulo}>Nome do recebedor</span>
+          <input
+            name="nomeRecebedorPix"
+            maxLength={100}
+            placeholder="Como aparece no banco ao pagar"
+            defaultValue={v.nomeRecebedorPix}
+            className={estiloCampo}
+          />
+          <span className="text-sm text-gray-600">O cliente confere esse nome no banco antes de pagar.</span>
+        </label>
+      </fieldset>
 
       <label className="flex flex-col gap-2">
         <span className={estiloRotulo}>Validade dos orçamentos (dias)</span>

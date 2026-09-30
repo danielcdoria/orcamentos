@@ -13,6 +13,7 @@ import { urlBase } from "@/lib/url";
 import { formatarTelefone, telefoneParaWhatsApp } from "@/lib/telefone";
 import { Phone } from "lucide-react";
 import { BotaoPdf } from "./botao-pdf";
+import { BlocoPix } from "./bloco-pix";
 import { CaixaTotal, LinkResponder } from "./blocos";
 import {
   OpcoesDoCliente,
@@ -36,7 +37,16 @@ const buscarOrcamento = cache(async (token: string) => {
     select: {
       ...CAMPOS_ORCAMENTO_PUBLICO,
       status: true, // usado só aqui no servidor (orçamento fechado trava as opções); não vai para a tela
-      empresa: { select: { nome: true, telefone: true, logoUrl: true, condicaoPagamento: true } },
+      empresa: {
+        select: {
+          nome: true,
+          telefone: true,
+          logoUrl: true,
+          condicaoPagamento: true,
+          chavePix: true, // Pix: só para exibir e copiar (ver bloco-pix.tsx)
+          nomeRecebedorPix: true,
+        },
+      },
     },
   });
 });
@@ -217,6 +227,9 @@ export default async function OrcamentoPublico(props: PageProps<"/orcamento/[tok
 
         {/* Total */}
         {opcoes ? <TotalAoVivo /> : <CaixaTotal valor={o.total} />}
+
+        {/* Pix (se a empresa preencheu a chave nos Ajustes): só exibição, com botão de copiar */}
+        {o.empresa.chavePix && <BlocoPix chave={o.empresa.chavePix} recebedor={o.empresa.nomeRecebedorPix} />}
 
         {/* Condições */}
         <section className="flex flex-col gap-4 px-5 py-6 text-base sm:px-8">
