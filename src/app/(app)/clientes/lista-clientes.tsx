@@ -9,6 +9,7 @@ import { ChevronRight, Search } from "lucide-react";
 import { clienteBate } from "@/lib/busca";
 import { formatarTelefone } from "@/lib/telefone";
 import { resumoProspeccao } from "@/lib/prospeccao";
+import { ContatoCliente } from "@/components/contato-cliente";
 import type { Abordagem } from "@/generated/prisma/enums";
 import { estiloBotao, estiloBotaoSecundario, estiloCampo, estiloCartao } from "@/components/estilos";
 
@@ -20,6 +21,7 @@ type Cliente = {
   cidade: string | null;
   abordagem: Abordagem | null;
   notaGoogle: number | null;
+  linkDemo: string | null;
 };
 
 export function ListaClientes({ clientes }: { clientes: Cliente[] }) {
@@ -36,7 +38,7 @@ export function ListaClientes({ clientes }: { clientes: Cliente[] }) {
             type="search"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Procurar por nome, cidade ou telefone"
+            placeholder="Nome, cidade ou telefone"
             aria-label="Procurar cliente por nome, cidade ou telefone"
             className={`${estiloCampo} pl-12`}
           />
@@ -67,8 +69,9 @@ export function ListaClientes({ clientes }: { clientes: Cliente[] }) {
           {visiveis.map((c) => {
             const resumo = resumoProspeccao(c); // "Lumiar · Mensagem antes · 4,5 ★"
             return (
-              <li key={c.id}>
-                <Link href={`/clientes/${c.id}`} className="flex min-h-16 items-center gap-3 px-4 py-3 hover:bg-gray-50">
+              // WhatsApp e demo ficam FORA do link da linha: tocar neles não abre o cadastro
+              <li key={c.id} className="flex items-center gap-1 pr-3">
+                <Link href={`/clientes/${c.id}`} className="flex min-h-16 min-w-0 flex-1 items-center gap-3 px-4 py-3 hover:bg-gray-50">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-lg font-semibold">{c.nome}</p>
                     {resumo && <p className="truncate text-base text-gray-700">{resumo}</p>}
@@ -77,6 +80,7 @@ export function ListaClientes({ clientes }: { clientes: Cliente[] }) {
                   </div>
                   <ChevronRight className="size-5 shrink-0 text-gray-400" aria-hidden />
                 </Link>
+                <ContatoCliente nome={c.nome} telefone={c.telefone} linkDemo={c.linkDemo} compacto />
               </li>
             );
           })}

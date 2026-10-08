@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import { useActionState, useState } from "react";
 import { salvarCliente, type EstadoForm } from "./actions";
 import { estiloBotao, estiloBotaoSecundario, estiloCampo, estiloDica, estiloErro, estiloRotulo } from "@/components/estilos";
 import { ABORDAGEM, LISTA_ABORDAGEM, formatarNota } from "@/lib/prospeccao";
+import { normalizar } from "@/lib/busca";
+import { telefoneParaWhatsApp } from "@/lib/telefone";
 import type { Abordagem } from "@/generated/prisma/enums";
 
 type Cliente = {
@@ -20,15 +23,39 @@ type Cliente = {
   avaliacoesGoogle: number | null;
 };
 
+type Outro = { id: string; nome: string; telefone: string | null };
+
+// Telefone comparável: "(21) 99999-8888" e "5521999998888" viram a mesma coisa.
+function chaveTelefone(telefone: string | null | undefined): string {
+  return telefoneParaWhatsApp(telefone) ?? (telefone ?? "").replace(/\D/g, "");
+}
+
+// Aviso de cliente repetido: só avisa, não impede de salvar.
+function AvisoRepetido({ texto, cliente }: { texto: string; cliente: Outro }) {
+  return (
+    <p role="status" className="flex gap-2 rounded-xl bg-amber-50 px-4 py-3 text-base text-amber-900">
+      <AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden />
+      <span>
+        {texto}{" "}
+        <Link href={`/clientes/${cliente.id}`} className="font-semibold underline underline-offset-2">
+          {cliente.nome}
+        </Link>
+      </span>
+    </p>
+  );
+}
+
 // O mesmo formulário serve para criar (sem cliente) e editar (com cliente).
 export function FormCliente({
   cliente,
   voltar,
   nomeInicial,
+  outros = [],
 }: {
   cliente?: Cliente;
   voltar?: string;
   nomeInicial?: string; // cadastro vindo de uma busca sem resultado: já vem com o nome digitado
+  outros?: Outro[]; // os OUTROS clientes da empresa, para avisar de repetido
 }) {
   // bind "prende" o id e o "voltar" como primeiros argumentos da ação
   const acaoComId = salvarCliente.bind(null, cliente?.id ?? null, voltar ?? null);
@@ -46,14 +73,31 @@ export function FormCliente({
   };
   // Abordagem fica aqui (não no formulário), então não se perde se o salvar der erro.
   const [abordagem, setAbordagem] = useState<Abordagem | null>(cliente?.abordagem ?? null);
+
+  // Nome e telefone acompanhados a cada tecla, para avisar na hora se já existe alguém igual
+  // (sem ligar para maiúsculas e acentos; telefone pelos números).
+  const [nome, setNome] = useState(v.nome);
+  const [telefone, setTelefone] = useState(v.telefone);
+  const nomeRepetido = normalizar(nome) ? outros.find((c) => normalizar(c.nome) === normalizar(nome)) : undefined;
+  const chave = chaveTelefone(telefone);
+  const telefoneRepetido = chave.length >= 8 ? outros.find((c) => chaveTelefone(c.telefone) === chave) : undefined;
   const cancelar = voltar === "orcamento" ? "/orcamentos/novo" : "/clientes";
 
   return (
     <form action={acao} className="flex flex-col gap-5">
       <label className="flex flex-col gap-2">
         <span className={estiloRotulo}>Nome</span>
-        <input name="nome" required maxLength={120} autoComplete="off" defaultValue={v.nome} className={estiloCampo} />
+        <input
+          name="nome"
+          required
+          maxLength={120}
+          autoComplete="off"
+          defaultValue={v.nome}
+          onChange={(e) => setNome(e.target.value)}
+          className={estiloCampo}
+        />
       </label>
+      {nomeRepetido && <AvisoRepetido texto="Já existe um cliente com este nome:" cliente={nomeRepetido} />}
 
       <label className="flex flex-col gap-2">
         <span className={estiloRotulo}>WhatsApp / telefone</span>
@@ -63,10 +107,12 @@ export function FormCliente({
           inputMode="tel"
           placeholder="(21) 99999-9999"
           defaultValue={v.telefone}
+          onChange={(e) => setTelefone(e.target.value)}
           className={estiloCampo}
         />
         <span className="text-sm text-gray-600">Com DDD, para o orçamento ir direto para a conversa dele.</span>
       </label>
+      {telefoneRepetido && <AvisoRepetido texto="Já existe um cliente com este telefone:" cliente={telefoneRepetido} />}
 
       <fieldset className="flex flex-col gap-5 border-t border-gray-200 pt-5">
         <legend className="float-left mb-1 text-lg font-semibold text-gray-900">

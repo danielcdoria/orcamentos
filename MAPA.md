@@ -151,7 +151,9 @@ cada registro. Por isso estas regras são tão importantes.
    já vem escolhida) e **"Opcional"** vira adicional (o cliente marca se quiser). No banco, isso
    é o tipo de cada item: fixo, opcao (com o nome do grupo, ex.: "Material") ou adicional. As
    regras de grupo, padrão e total ficam em `src/lib/opcoes.ts`.
-3. Ao salvar, chama `salvarOrcamento` (`src/app/(app)/orcamentos/actions.ts`), que:
+3. Há dois botões: **"Salvar orçamento"** e **"Salvar e marcar como enviado"** (para quem manda
+   a mensagem por fora: o orçamento já nasce enviado, com `enviadoEm` = agora, e a cobrança
+   começa a contar). Ao salvar, chama `salvarOrcamento` (`src/app/(app)/orcamentos/actions.ts`), que:
    - confere o login e que o cliente é **desta** empresa;
    - valida e **recalcula** cada subtotal e o total, em centavos;
    - com opções: cada grupo precisa de 2+ opções e fica com 1 padrão; o total começa com os
@@ -309,6 +311,7 @@ Pastas geradas (fora do git, não se edita): `node_modules/` (bibliotecas, recri
 | `seletor-status.tsx` | A pílula de status que troca na hora e mostra "Salvo ✓". |
 | `aviso.tsx` | Aviso verde de "deu certo" quando a tela recebe `?ok=<código>`. Os códigos e textos ficam aqui. |
 | `bloco-margem.tsx` | Bloco "Só você vê": custo, lucro e margem colorida. Usado no novo orçamento e na tela do orçamento; nunca na página pública. |
+| `contato-cliente.tsx` | Atalhos de um cliente: **WhatsApp** (link `wa.me` sem mensagem, só com telefone válido) e **Ver demo** (abre o link da demo em outra aba). Na lista, só os ícones; na tela do cliente, botões com texto. |
 | `estado-vazio.tsx` | Tela vazia padrão: ícone, título, explicação e botão. |
 
 ### Páginas e ações (`src/app/`)
@@ -341,19 +344,19 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `orcamentos/page.tsx` | Lista de orçamentos (mais recentes primeiro), faixa de cobrança pendente, pílula de status e "Viu / Não viu". Busca e filtro **no servidor**, pelo endereço (`?busca=lumiar&status=enviado`): pelo nome do cliente (sem acento) ou pelo número. Pílulas de status com a contagem (Rascunho e Aberto só aparecem se houver algum). Mostra 100 por vez, com "Mostrando 100 de 340" e "Mostrar mais" (`?limite=`). |
 | `orcamentos/busca-orcamentos.tsx` | A barra de busca da lista: atualiza o endereço 0,3 s depois de parar de digitar (o servidor é que procura). |
 | `orcamentos/novo/page.tsx` | Tela de novo orçamento (explica o que falta se não houver cliente ou catálogo). Manda ao formulário os clientes (nome e telefone) e os orçamentos não perdidos de cada um, para o aviso de duplicado. |
-| `orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento com total ao vivo (passo 1): custo; "Opcional" (adicional) e "Dar opções ao cliente", que transforma o item num cartão de escolha onde se adicionam as outras opções (a marcada ● já vem escolhida). Se o item não está no catálogo, dá para usar o nome digitado e pôr o preço na hora. O cliente é escolhido pela busca (`BuscaCliente`), com "Trocar" e o aviso "já tem o orçamento nº X". |
+| `orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento com total ao vivo (passo 1): custo; "Opcional" (adicional) e "Dar opções ao cliente", que transforma o item num cartão de escolha onde se adicionam as outras opções (a marcada ● já vem escolhida). Se o item não está no catálogo, dá para usar o nome digitado e pôr o preço na hora. O cliente é escolhido pela busca (`BuscaCliente`), com "Trocar" e o aviso "já tem o orçamento nº X". Dois botões: "Salvar orçamento" e "Salvar e marcar como enviado". |
 | `orcamentos/[id]/page.tsx` | Um orçamento: total, escolha do cliente (e o sinal "mexeu nas opções"), margem, envio, "Ver como o cliente vê", PDF, itens (por grupo), observação e histórico. |
 | `orcamentos/[id]/botoes-envio.tsx` | "Enviar no WhatsApp" e "Copiar link do orçamento". |
-| `orcamentos/actions.ts` | `salvarOrcamento`, `marcarEnviado`, `alterarStatus` (que também grava a data de envio, se estiver vazia). |
+| `orcamentos/actions.ts` | `salvarOrcamento` (com `jaEnviado`, já grava enviado + `enviadoEm`), `marcarEnviado`, `alterarStatus` (que também grava a data de envio, se estiver vazia). |
 | `cobrar/page.tsx` | **Cobrar hoje**, a tela principal do produto (passo 4). |
 | `cobrar/cartao-cobranca.tsx` | Um cartão por cliente com a mensagem pronta e os dois botões. |
 | `cobrar/actions.ts` | `registrarCobranca` e `marcarRespondido`. |
 | `painel/page.tsx` | Os quatro números (passo 5). |
 | `clientes/page.tsx` | Lista de clientes (busca os da empresa e entrega à lista abaixo). |
-| `clientes/lista-clientes.tsx` | A lista com busca instantânea no navegador (nome, cidade e telefone, sem acento), "3 de 120" e "Cadastrar “nome”" quando não acha. Embaixo do nome: cidade · abordagem · nota. |
-| `clientes/novo/page.tsx` | Novo cliente (com `?voltar=orcamento`, volta ao orçamento com o cliente escolhido; com `?nome=`, já abre com o nome preenchido). |
-| `clientes/[id]/page.tsx` | Editar cliente. |
-| `clientes/form-cliente.tsx` | Formulário de cliente: nome, WhatsApp, seção **Prospecção** (cidade, abordagem em dois botões, link da demo, Instagram, nota e avaliações no Google) e observação. |
+| `clientes/lista-clientes.tsx` | A lista com busca instantânea no navegador (nome, cidade e telefone, sem acento), "3 de 120" e "Cadastrar “nome”" quando não acha. Embaixo do nome: cidade · abordagem · nota. À direita: ícones de WhatsApp e demo (fora do link da linha). |
+| `clientes/novo/page.tsx` | Novo cliente (com `?voltar=orcamento`, volta ao orçamento com o cliente escolhido; com `?nome=`, já abre com o nome preenchido). Manda ao formulário os clientes da empresa, para o aviso de repetido. |
+| `clientes/[id]/page.tsx` | Editar cliente, com os botões WhatsApp e Ver demo no topo. Manda os **outros** clientes, para o aviso de repetido. |
+| `clientes/form-cliente.tsx` | Formulário de cliente: nome, WhatsApp, seção **Prospecção** (cidade, abordagem em dois botões, link da demo, Instagram, nota e avaliações no Google) e observação. Avisa enquanto se digita se já existe cliente com o mesmo nome (sem acento/maiúscula) ou telefone, com link para ele (só avisa, não impede). |
 | `clientes/actions.ts` | `salvarCliente` (valida também os campos de prospecção). |
 | `catalogo/page.tsx` | Catálogo com busca (`/catalogo?busca=oleo`). |
 | `catalogo/novo/page.tsx` | Novo item. |

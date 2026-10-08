@@ -11,7 +11,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { AlertTriangle, ListChecks, Plus, Search, Trash2, Undo2, UserPlus } from "lucide-react";
+import { AlertTriangle, ListChecks, Plus, Search, Send, Trash2, Undo2, UserPlus } from "lucide-react";
 import { salvarOrcamento, type DadosOrcamento } from "../actions";
 import { calcularSubtotal, centavosParaTexto, formatarCentavos, lerQuantidade, lerReais } from "@/lib/dinheiro";
 import { calcularMargem } from "@/lib/margem";
@@ -93,6 +93,7 @@ export function FormOrcamento({
   const [observacao, setObservacao] = useState("");
   const [erro, setErro] = useState<string>();
   const [salvando, iniciarSalvar] = useTransition();
+  const [jaEnviado, setJaEnviado] = useState(false); // qual dos dois botões de salvar foi tocado
 
   const subtotais = linhas.map(subtotalDaLinha);
 
@@ -206,7 +207,7 @@ export function FormOrcamento({
     return nomes;
   }
 
-  function salvar() {
+  function salvar(marcarEnviado: boolean) {
     setErro(undefined);
     if (!clienteId) return setErro("Escolha o cliente.");
     if (linhas.length === 0) return setErro("Adicione pelo menos um item.");
@@ -245,8 +246,9 @@ export function FormOrcamento({
       });
     }
 
+    setJaEnviado(marcarEnviado);
     iniciarSalvar(async () => {
-      const resultado = await salvarOrcamento({ clienteId, observacao, linhas: dados });
+      const resultado = await salvarOrcamento({ clienteId, observacao, linhas: dados, jaEnviado: marcarEnviado });
       if (resultado?.erro) setErro(resultado.erro);
     });
   }
@@ -481,8 +483,13 @@ export function FormOrcamento({
       {erro && <p role="alert" className={estiloErro}>{erro}</p>}
 
       <div className="flex flex-col gap-3">
-        <button type="button" onClick={salvar} disabled={salvando} className={`${estiloBotao} w-full text-lg`}>
-          {salvando ? "Salvando..." : "Salvar orçamento"}
+        <button type="button" onClick={() => salvar(false)} disabled={salvando} className={`${estiloBotao} w-full text-lg`}>
+          {salvando && !jaEnviado ? "Salvando..." : "Salvar orçamento"}
+        </button>
+        {/* Para quem manda a mensagem por fora: salva já como enviado (a cobrança começa a contar) */}
+        <button type="button" onClick={() => salvar(true)} disabled={salvando} className={`${estiloBotaoSecundario} w-full`}>
+          <Send className="size-5" aria-hidden />
+          {salvando && jaEnviado ? "Salvando..." : "Salvar e marcar como enviado"}
         </button>
         <Link href="/orcamentos" className={`${estiloBotaoSecundario} w-full`}>
           Cancelar

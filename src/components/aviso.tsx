@@ -12,6 +12,7 @@ const MENSAGENS: Record<string, string> = {
   "item-salvo": "Item salvo no catálogo.",
   "item-apagado": "Item apagado do catálogo.",
   "orcamento-criado": "Orçamento criado. Agora é só enviar para o cliente.",
+  "orcamento-enviado": "Orçamento salvo e marcado como enviado. A cobrança conta os dias a partir de hoje.",
 };
 
 export function Aviso({ codigo }: { codigo?: string | string[] }) {

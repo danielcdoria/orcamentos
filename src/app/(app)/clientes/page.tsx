@@ -22,6 +22,7 @@ export default async function PaginaClientes(props: PageProps<"/clientes">) {
       cidade: true,
       abordagem: true,
       notaGoogle: true,
+      linkDemo: true,
     },
   });
 

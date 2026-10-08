@@ -199,7 +199,7 @@ async function main() {
 
   // 2) Nenhuma tela da A mostra dados da B
   // As buscas por "SECRETO" e pelo nº 2 (que as duas empresas têm) só podem achar o que é da A.
-  for (const caminho of ["/orcamentos", "/orcamentos?busca=SECRETO", "/orcamentos?busca=2&status=enviado", "/clientes", "/catalogo", "/catalogo?busca=SECRETO", "/orcamentos/novo", "/cobrar", "/painel", "/configuracoes"]) {
+  for (const caminho of ["/orcamentos", "/orcamentos?busca=SECRETO", "/orcamentos?busca=2&status=enviado", "/clientes", "/clientes/novo", "/catalogo", "/catalogo?busca=SECRETO", "/orcamentos/novo", "/cobrar", "/painel", "/configuracoes"]) {
     const r = await pagina(A.sessao, caminho);
     const mostraA = caminho === "/painel" || caminho === "/configuracoes" || r.corpo.includes("SECRETO-A");
     registrar(`Tela ${caminho} da A não mostra nada da B`, r.status === 200 && !r.corpo.includes("SECRETO-B") && mostraA, `HTTP ${r.status}`);

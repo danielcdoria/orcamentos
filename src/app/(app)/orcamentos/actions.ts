@@ -15,6 +15,9 @@ import type { StatusOrcamento } from "@/generated/prisma/enums";
 export type DadosOrcamento = {
   clienteId: string;
   observacao: string;
+  // "Salvar e marcar como enviado": a mensagem foi (ou vai ser) mandada por fora, sem o
+  // botão de envio. Já nasce enviado, e a cobrança conta os dias a partir de agora.
+  jaEnviado?: boolean;
   linhas: {
     descricao: string;
     quantidade: string;
@@ -153,6 +156,7 @@ export async function salvarOrcamento(dados: DadosOrcamento): Promise<EstadoOrca
             total,
             observacao: observacao || null,
             validoAte,
+            ...(dados.jaEnviado === true && { status: "enviado", enviadoEm: new Date() }),
             itens: { create: linhas },
           },
         });
@@ -167,7 +171,8 @@ export async function salvarOrcamento(dados: DadosOrcamento): Promise<EstadoOrca
   }
 
   revalidatePath("/orcamentos");
-  redirect(`/orcamentos/${orcamentoId}?ok=orcamento-criado`); // abre o orçamento recém-criado
+  // abre o orçamento recém-criado
+  redirect(`/orcamentos/${orcamentoId}?ok=${dados.jaEnviado === true ? "orcamento-enviado" : "orcamento-criado"}`);
 }
 
 // Chamado quando a pessoa toca em "Enviar no WhatsApp".
