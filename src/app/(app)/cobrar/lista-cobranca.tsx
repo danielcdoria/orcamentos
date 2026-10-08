@@ -16,7 +16,7 @@ type Concluido = {
   cobrancaId?: string | null;
 };
 
-const chave = (i: ItemFila) => `${i.orcamentoId}-${i.etapa}`;
+const chave = (i: ItemFila) => i.orcamentoId;
 
 export function ListaCobranca({ fila }: { fila: ItemFila[] }) {
   const [concluidos, setConcluidos] = useState<Record<string, Concluido>>({});
@@ -30,7 +30,7 @@ export function ListaCobranca({ fila }: { fila: ItemFila[] }) {
     const k = chave(item);
     marcar(k, { item, posicao, tipo: "cobrado", cobrancaId: undefined });
     iniciar(async () => {
-      const id = await registrarCobranca(item.orcamentoId, item.etapa);
+      const id = await registrarCobranca(item.orcamentoId);
       setConcluidos((atual) => (atual[k] ? { ...atual, [k]: { ...atual[k], cobrancaId: id } } : atual));
     });
   }

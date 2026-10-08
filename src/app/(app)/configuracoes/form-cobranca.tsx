@@ -4,15 +4,14 @@ import { useActionState } from "react";
 import { salvarCobranca, type EstadoForm } from "./actions";
 import { estiloBotao, estiloCampo, estiloErro, estiloRotulo } from "@/components/estilos";
 
-// Só os prazos. Os 4 modelos de mensagem de cobrança (msgCobranca*) continuam no banco, mas
-// não aparecem mais: a pessoa escreve cada cobrança no WhatsApp e só marca "Já cobrei".
+// Só os dois prazos da cobrança única. prazoCobranca2 e os 4 modelos de mensagem continuam no
+// banco, mas não aparecem mais: a pessoa escreve a cobrança no WhatsApp e marca "Já cobrei".
 type Cobranca = {
   prazoCobranca1: string;
-  prazoCobranca2: string;
   prazoPerdido: string;
 };
 
-function CampoDias({ nome, rotulo, valor }: { nome: string; rotulo: string; valor: string }) {
+function CampoDias({ nome, rotulo, dica, valor }: { nome: string; rotulo: string; dica: string; valor: string }) {
   return (
     <label className="flex flex-col gap-2">
       <span className={estiloRotulo}>{rotulo}</span>
@@ -29,6 +28,7 @@ function CampoDias({ nome, rotulo, valor }: { nome: string; rotulo: string; valo
         />
         <span className="text-base text-gray-600">dias</span>
       </div>
+      <span className="text-sm text-gray-600">{dica}</span>
     </label>
   );
 }
@@ -40,16 +40,23 @@ export function FormCobranca({ cobranca }: { cobranca: Cobranca }) {
   return (
     <form action={acao} className="flex flex-col gap-5">
       <p className="text-base text-gray-600">
-        Quantos dias depois de enviar o orçamento, sem resposta, o sistema te lembra de cobrar. Em
-        “Desistir”, o orçamento vira Perdido e sai da lista. Se o cliente responder antes, marque
-        Respondido, Fechado ou Perdido e ele também sai da lista.
+        Você cobra uma vez só. Se o cliente responder, marque Respondido, Fechado ou Perdido e ele
+        sai da lista.
       </p>
 
-      <div className="grid grid-cols-3 gap-3">
-        {/* "Desistir" = marca como perdido e para de cobrar */}
-        <CampoDias nome="prazoCobranca1" rotulo="1ª cobrança" valor={v.prazoCobranca1} />
-        <CampoDias nome="prazoCobranca2" rotulo="2ª cobrança" valor={v.prazoCobranca2} />
-        <CampoDias nome="prazoPerdido" rotulo="Desistir" valor={v.prazoPerdido} />
+      <div className="grid grid-cols-2 gap-3">
+        <CampoDias
+          nome="prazoCobranca1"
+          rotulo="Cobrar"
+          dica="depois de enviar o orçamento, sem resposta"
+          valor={v.prazoCobranca1}
+        />
+        <CampoDias
+          nome="prazoPerdido"
+          rotulo="Virar Perdido"
+          dica="depois da cobrança, sem resposta"
+          valor={v.prazoPerdido}
+        />
       </div>
 
       {estado.erro && <p role="alert" className={estiloErro}>{estado.erro}</p>}

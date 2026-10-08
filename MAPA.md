@@ -28,7 +28,7 @@ cada uma com o seu login, e uma nunca vê os dados da outra.
 | `npm run criar-empresa` | O mesmo, no banco de testes. |
 | `npm run demo:producao` / `npm run demo` | Recria a "Oficina Silva" de demonstração (banco real / de testes). Só apaga a Oficina Silva. |
 | `npm run demo:marcenaria:producao` / `npm run demo:marcenaria` | Recria a "Madeira Nobre" (marcenaria de móveis sob medida e montagem) de demonstração. Só apaga a Madeira Nobre. |
-| `npm run preencher-envio:producao` | **Correção única** (out/2026): orçamentos marcados como Enviado pela pílula antes da correção ficaram sem data de envio e não entravam em "Cobrar hoje". Preenche com a data de criação. Sozinho, **só mostra** o que mudaria (e quais virariam Perdido pelo prazo); com `-- --gravar`, grava. `npm run preencher-envio` faz o mesmo no banco de testes. |
+| `npm run preencher-envio:producao` | **Correção única** (out/2026): orçamentos marcados como Enviado pela pílula antes da correção ficaram sem data de envio e não entravam em "Cobrar hoje". Preenche com a data de criação. Sozinho, **só mostra** o que mudaria (quais entram em "Cobrar hoje"; nenhum vira Perdido, porque o prazo de perdido conta da cobrança); com `-- --gravar`, grava. `npm run preencher-envio` faz o mesmo no banco de testes. |
 | `npm run migrar-abordagem:producao` | **Correção única** (out/2026): onde a Observação do cliente é "Mensagem antes" ou "Site pronto antes" (sem ligar para maiúsculas), grava no campo novo **Abordagem** e apaga a observação. Outros textos ficam. Sozinho, **só mostra**; com `-- --gravar`, grava. `npm run migrar-abordagem` faz o mesmo no banco de testes. |
 | `npm run teste:isolamento` | **Teste de vazamento entre empresas** (com o `npm run dev` ligado). Rode sempre que mexer em telas ou ações. Tem que terminar com "Nenhum vazamento encontrado". |
 
@@ -202,20 +202,23 @@ cada registro. Por isso estas regras são tão importantes.
 
 ### Passo 4: a cobrança
 1. Toda tela interna (`src/app/(app)/layout.tsx`) chama `contarFila` para mostrar a bolinha
-   vermelha em "Cobrar hoje". A contagem também aplica `marcarPerdidosVencidos`: quem passou do
-   prazo de "desistir" vira **perdido**. Não existe um "relógio": a regra roda sempre que o
+   vermelha em "Cobrar hoje". A contagem também aplica `marcarPerdidosVencidos`: quem **já foi
+   cobrado** e passou o prazo "Virar Perdido" (dias **depois da cobrança**) sem responder vira
+   **perdido**. Quem ainda não foi cobrado nunca vira perdido sozinho. Não existe um "relógio": a regra roda sempre que o
    sistema é aberto.
 2. `/cobrar` chama `buscarFila` (`src/lib/cobranca.ts`), que para cada orçamento **enviado ou
-   aberto**: conta os dias de calendário (Brasília) desde `enviadoEm`, decide a etapa devida (1ª
-   ou 2ª, conforme os prazos dos Ajustes e as cobranças já feitas). **Não há mensagem pronta**:
+   aberto**: conta os dias de calendário (Brasília) desde `enviadoEm` e, se passou o prazo "Cobrar"
+   dos Ajustes e ainda **não houve cobrança**, põe na fila. **É uma cobrança só** (desde
+   out/2026; antes havia 1ª e 2ª). Fica na fila até "Já cobrei" ou até o cliente responder.
+   **Não há mensagem pronta**:
    cada cobrança é escrita à mão no WhatsApp (os 4 modelos de mensagem continuam no banco, mas
    não são usados nem aparecem nos Ajustes). Se o cliente **mexeu nas opções** (tem `EscolhaCliente`),
    o cartão mostra "Mexeu nas opções": sinal de dúvida de preço. A tela do orçamento mostra o
    mesmo sinal, a escolha atual, o total que você propôs e cada troca no histórico.
 3. Cada cartão (`cartao-cobranca.tsx`) mostra nome, telefone, há quantos dias foi enviado, o
-   nº do orçamento (link), o valor e a etapa, com dois botões:
-   - **"Já cobrei"** chama `registrarCobranca`, que grava uma `Cobranca` (a etapa, sem texto).
-     Assim aquela etapa sai da fila e da bolinha. O cartão vira a linha verde "cobrança
+   nº do orçamento (link) e o valor, com dois botões:
+   - **"Já cobrei"** chama `registrarCobranca`, que grava uma `Cobranca` (etapa 1, sem texto).
+     Assim o orçamento sai da fila e da bolinha, e começa a contar o prazo de "Virar Perdido". O cartão vira a linha verde "cobrança
      registrada ✓" com **"Desfazer"** por 8 segundos (`desfazerCobranca` apaga só aquela
      cobrança: da empresa logada, sem texto e de menos de 10 minutos). A lista
      (`lista-cobranca.tsx`) segura a linha verde na tela mesmo depois que a fila atualiza;
@@ -241,7 +244,7 @@ e os enviados, fechados e a taxa de fechamento **entre os enviados no mês atual
 
 | Tabela | O que guarda |
 |---|---|
-| `Empresa` | Cada empresa cliente: nome, telefone, condição de pagamento, dias de validade, mensagem de envio, prazos de cobrança (1ª, 2ª, desistir), os 4 modelos de mensagem de cobrança (guardados, mas **não usados** desde out/2026) e o Pix (chave e nome do recebedor, opcionais, só para exibir). |
+| `Empresa` | Cada empresa cliente: nome, telefone, condição de pagamento, dias de validade, mensagem de envio, prazos de cobrança (`prazoCobranca1` = cobrar X dias depois do envio; `prazoPerdido` = virar perdido X dias depois da cobrança; `prazoCobranca2` ficou sem uso), os 4 modelos de mensagem de cobrança (guardados, mas **não usados** desde out/2026) e o Pix (chave e nome do recebedor, opcionais, só para exibir). |
 | `EmpresaLogo` | A imagem do logo (PNG/JPG), separada para não pesar nas outras consultas. |
 | `Usuario` | O login da empresa (um por empresa): email, hash da senha, contador de tentativas erradas e bloqueio. |
 | `Sessao` | Cada login aberto (um celular, um computador). Guarda o hash do código do cookie. Dura 30 dias. |
@@ -250,11 +253,11 @@ e os enviados, fechados e a taxa de fechamento **entre os enviados no mês atual
 | `Orcamento` | Número, cliente, total (centavos; soma dos itens **incluídos**, muda quando o cliente troca uma opção), observação, validade, status, token do link, datas de envio/abertura, vezes aberto. |
 | `OrcamentoItem` | As linhas do orçamento: cópia da descrição e do preço, quantidade (aceita 2,5), subtotal, **custo por unidade** (opcional, interno: nunca vai para o cliente) e as opções: `tipo` (fixo, opcao, adicional), `grupo`, `padrao` e `incluido` (está no total agora). Orçamentos antigos: tudo fixo e incluído. |
 | `EscolhaCliente` | Cada vez que o cliente mudou as opções na página: resumo da escolha, total e quando. Máximo de 100 por orçamento. |
-| `Cobranca` | Cada cobrança feita: etapa (1 ou 2) e quando. O texto (`mensagem`) só existe nas antigas, da época da mensagem pronta; as do "Já cobrei" ficam sem texto. Uma por etapa por orçamento. |
+| `Cobranca` | Cada cobrança feita: etapa (hoje sempre 1; antigas podem ter a 2) e quando. O texto (`mensagem`) só existe nas antigas, da época da mensagem pronta; as do "Já cobrei" ficam sem texto. Uma por etapa por orçamento. |
 
 **Status do orçamento:** `rascunho` → `enviado` (tocou em Enviar) → `aberto` (cliente viu,
-automático) → `respondido` / `fechado` / `perdido` (à mão; perdido também é automático após o
-prazo de desistir). Enquanto está **enviado ou aberto**, o orçamento está "esperando o cliente"
+automático) → `respondido` / `fechado` / `perdido` (à mão; perdido também é automático, o
+prazo "Virar Perdido" depois da cobrança). Enquanto está **enviado ou aberto**, o orçamento está "esperando o cliente"
 e entra na cobrança e no valor parado.
 
 ---
@@ -304,7 +307,7 @@ Pastas geradas (fora do git, não se edita): `node_modules/` (bibliotecas, recri
 | `telefone.ts` | `telefoneParaWhatsApp` ("(21) 99999-8888" → "5521999998888") e `formatarTelefone`. |
 | `mensagem.ts` | `montarMensagem`: troca `{nome}`, `{cliente}`, `{empresa}`, `{valor}`, `{link}`, `{validade}`, `{numero}` pelos dados reais. |
 | `status.ts` | Nome e cor de cada status, e quais contam como "esperando o cliente". |
-| `cobranca.ts` | **A regra de cobrança** (passo 4): dias desde o envio, etapa devida, fila do dia (sem mensagem pronta), contagem para a bolinha, perdidos automáticos. |
+| `cobranca.ts` | **A regra de cobrança** (passo 4): uma cobrança só; dias desde o envio, cobrança devida, fila do dia (sem mensagem pronta), contagem para a bolinha, perdidos automáticos (contados da cobrança). |
 | `abertura.ts` | Decide se uma visita ao link conta como abertura e grava a abertura (passo 3). |
 | `margem.ts` | Custo total, lucro e margem de um orçamento (margem = lucro ÷ venda) e a faixa de cor (verde > 30%, amarelo 15–30%, vermelho < 15%). Interno. |
 | `opcoes.ts` | **Opções que o cliente escolhe**: separa fixos, grupos e adicionais, define a padrão de cada grupo, soma o total e escreve o resumo ("Material: MDF comum · + LED"). Roda no servidor e no navegador. |
@@ -360,7 +363,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `orcamentos/actions.ts` | `salvarOrcamento` (com `jaEnviado`, já grava enviado + `enviadoEm`), `marcarEnviado`, `alterarStatus` (que também grava a data de envio, se estiver vazia). |
 | `cobrar/page.tsx` | **Cobrar hoje**, a tela principal do produto (passo 4). |
 | `cobrar/lista-cobranca.tsx` | A lista da tela: guarda os cartões concluídos nesta visita (a linha verde fica no mesmo lugar) e faz o "Desfazer" trazer o cartão de volta. |
-| `cobrar/cartao-cobranca.tsx` | Um cartão por cliente (nome, telefone, dias, nº, valor, etapa) com "Já cobrei" e "O cliente já respondeu"; e a linha verde de confirmação com "Desfazer" por 8 s. |
+| `cobrar/cartao-cobranca.tsx` | Um cartão por cliente (nome, telefone, dias, nº, valor) com "Já cobrei" e "O cliente já respondeu"; e a linha verde de confirmação com "Desfazer" por 8 s. |
 | `cobrar/actions.ts` | `registrarCobranca` (devolve o id), `desfazerCobranca` e `marcarRespondido`. |
 | `painel/page.tsx` | Os quatro números do mês, o funil por status e a comparação das abordagens (passo 5). |
 | `clientes/page.tsx` | Lista de clientes (busca os da empresa e entrega à lista abaixo). |
@@ -376,7 +379,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `catalogo/actions.ts` | `salvarItem`, `apagarItem`. |
 | `configuracoes/page.tsx` | Tela **Ajustes**: logo, dados da empresa, cobrança e "Sair do sistema". |
 | `configuracoes/form-empresa.tsx` | Nome, telefone, condição de pagamento, Pix (chave e recebedor, opcionais), validade e mensagem de envio (com exemplo ao vivo). |
-| `configuracoes/form-cobranca.tsx` | Prazos (1ª, 2ª, desistir). Os 4 modelos de mensagem de cobrança não aparecem mais. |
+| `configuracoes/form-cobranca.tsx` | Os dois prazos: "Cobrar" (dias depois do envio) e "Virar Perdido" (dias depois da cobrança). A 2ª cobrança e os 4 modelos de mensagem de cobrança não aparecem mais. |
 | `configuracoes/logo.tsx` | Enviar/trocar/remover logo; reduz a imagem no navegador (512px, PNG). |
 | `configuracoes/actions.ts` | `salvarEmpresa`, `salvarCobranca`, `salvarLogo` (confere se é mesmo PNG/JPG/WebP), `removerLogo`. |
 

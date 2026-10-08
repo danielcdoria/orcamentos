@@ -1,6 +1,6 @@
 "use client";
 
-// Um cartão por cliente em "Cobrar hoje": quem cobrar, há quanto tempo e em qual etapa.
+// Um cartão por cliente em "Cobrar hoje": quem cobrar e há quanto tempo (é uma cobrança só).
 // A mensagem é escrita pela pessoa no WhatsApp; aqui ela só marca "Já cobrei".
 
 import Link from "next/link";
@@ -43,15 +43,14 @@ export function CartaoCobranca({
         <p className="shrink-0 text-xl font-bold text-marca">{formatarCentavos(item.total)}</p>
       </div>
 
-      <div className="flex flex-wrap gap-2 text-sm font-medium">
-        <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900">{item.etapa}ª cobrança</span>
-        {item.mexeuNasOpcoes && (
+      {item.mexeuNasOpcoes && (
+        <div className="flex flex-wrap gap-2 text-sm font-medium">
           <span className="flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-amber-900">
             <Shuffle className="size-4" aria-hidden />
             Mexeu nas opções
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Sinal de dúvida de preço: o cliente trocou opções e não respondeu */}
       {item.mexeuNasOpcoes && (

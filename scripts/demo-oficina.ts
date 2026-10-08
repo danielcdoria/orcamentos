@@ -59,9 +59,9 @@ const clientes: ConfigDemo["clientes"] = [
 ];
 
 // ---------- 18 orçamentos, do mais antigo (nº 1) ao mais novo (nº 18) ----------
-// dias = há quantos dias foi enviado. Com os prazos padrão (2, 7 e 15 dias), exatamente
-// 3 ficam para "Cobrar hoje": Roberto (2ª cobrança, abriu), Mariana (1ª, abriu) e
-// Carlos (1ª, não abriu).
+// dias = há quantos dias foi enviado. Com os prazos padrão (cobrar 2 dias depois do envio,
+// perdido 15 dias depois da cobrança), exatamente 3 ficam para "Cobrar hoje", os que ainda
+// não foram cobrados: Roberto (abriu), Mariana (abriu) e Carlos (não abriu).
 const planos: Plano[] = [
   { cliente: "Paulo Henrique Santos", dias: 25, status: "fechado", abriu: 25, vezes: 2,
     itens: [["Amortecedor dianteiro", 1], ["Mão de obra suspensão dianteira", 1], ["Alinhamento", 1]] },
@@ -81,7 +81,7 @@ const planos: Plano[] = [
     cobrancas: [[1, 7], [2, 2]], itens: [["Kit embreagem (platô, disco e rolamento)", 1], ["Mão de obra troca de embreagem", 1]],
     obs: "Carro de trabalho: prazo de 1 dia útil." },
   { cliente: "Roberto Almeida", dias: 8, status: "aberto", abriu: 7, vezes: 2,
-    cobrancas: [[1, 6]], itens: [["Kit embreagem (platô, disco e rolamento)", 1], ["Mão de obra troca de embreagem", 1], ["Diagnóstico com scanner", 1]],
+    itens: [["Kit embreagem (platô, disco e rolamento)", 1], ["Mão de obra troca de embreagem", 1], ["Diagnóstico com scanner", 1]],
     obs: "Pedal da embreagem alto e patinando na subida." },
   { cliente: "Patrícia Gomes", dias: 5, status: "aberto", abriu: 4,
     cobrancas: [[1, 3]], itens: [["Amortecedor dianteiro", 1], ["Bieleta", 1], ["Mão de obra suspensão dianteira", 1]] },

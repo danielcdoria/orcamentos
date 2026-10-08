@@ -6,11 +6,11 @@ import { prisma } from "@/lib/prisma";
 import { STATUS_AGUARDANDO } from "@/lib/status";
 
 // Chamado quando a pessoa toca em "Já cobrei" na tela Cobrar hoje (ela mesma escreveu a
-// mensagem no WhatsApp). Registra que aquela etapa foi cobrada, para o orçamento sair da
-// fila e não aparecer de novo. Devolve o id da cobrança, para o "Desfazer".
-export async function registrarCobranca(orcamentoId: string, etapa: number): Promise<string | null> {
+// mensagem no WhatsApp). Registra a cobrança (é uma só, etapa 1), para o orçamento sair da
+// fila e o prazo de "perdido" começar a contar. Devolve o id da cobrança, para o "Desfazer".
+export async function registrarCobranca(orcamentoId: string): Promise<string | null> {
   const { empresaId } = await exigirSessao();
-  if (etapa !== 1 && etapa !== 2) return null;
+  const etapa = 1;
 
   const orcamento = await prisma.orcamento.findFirst({
     where: { id: orcamentoId, empresaId, status: { in: STATUS_AGUARDANDO } },

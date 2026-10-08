@@ -5,8 +5,8 @@
 //       npm run demo:marcenaria:producao   (site publicado)
 //
 // Pode rodar quantas vezes quiser: apaga a Madeira Nobre anterior (e só ela) e recria tudo com
-// as datas contadas a partir de hoje. Sempre haverá exatamente 3 orçamentos em "Cobrar hoje":
-// Renata (2ª cobrança, viu), Thiago (1ª, viu e mexeu nas opções) e Cláudia (1ª, não viu).
+// as datas contadas a partir de hoje. Sempre haverá exatamente 3 orçamentos em "Cobrar hoje"
+// (ainda não cobrados): Renata (viu), Thiago (viu e mexeu nas opções) e Cláudia (não viu).
 // O motor que faz o trabalho está em scripts/demo/motor.ts.
 
 import path from "node:path";
@@ -82,7 +82,7 @@ const planos: Plano[] = [
   { cliente: "Adriana Freitas", dias: 9, status: "enviado", cobrancas: [[1, 7], [2, 2]],
     itens: [["Closet planejado", 6], ["Gaveta com corrediça telescópica", 4], ["Iluminação LED embutida no móvel", 4]],
     obs: "Closet em L no quarto do casal." },
-  { cliente: "Renata Barbosa", dias: 8, status: "aberto", abriu: 7, vezes: 2, cobrancas: [[1, 6]],
+  { cliente: "Renata Barbosa", dias: 8, status: "aberto", abriu: 7, vezes: 2,
     itens: [["Armário de cozinha planejado (MDF)", 7.5], ["Puxador perfil em alumínio", 6], ["Dobradiça com amortecedor", 24], ["Instalação de móveis planejados", 2]],
     obs: "Cozinha em U. Prazo de fabricação: 25 dias úteis após a aprovação do projeto." },
   { cliente: "Márcio Teixeira", dias: 5, status: "aberto", abriu: 4, cobrancas: [[1, 3]],

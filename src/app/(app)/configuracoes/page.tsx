@@ -43,7 +43,6 @@ export default async function PaginaConfiguracoes() {
         <FormCobranca
           cobranca={{
             prazoCobranca1: String(empresa.prazoCobranca1),
-            prazoCobranca2: String(empresa.prazoCobranca2),
             prazoPerdido: String(empresa.prazoPerdido),
           }}
         />

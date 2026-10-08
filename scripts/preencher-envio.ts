@@ -28,7 +28,7 @@ async function main() {
       numero: true,
       criadoEm: true,
       cliente: { select: { nome: true } },
-      empresa: { select: { nome: true, prazoCobranca1: true, prazoCobranca2: true, prazoPerdido: true } },
+      empresa: { select: { nome: true, prazoCobranca1: true } },
     },
   });
 
@@ -37,21 +37,19 @@ async function main() {
     return;
   }
 
-  // O que acontece com cada um depois de ganhar a data, pela regra de cobrança
-  const efeito = { perdido: 0, cobrar: 0, esperando: 0 };
+  // O que acontece com cada um depois de ganhar a data, pela regra de cobrança. Nenhum vira
+  // Perdido por isso: o prazo de perdido só conta depois da cobrança ("Já cobrei").
+  const efeito = { cobrar: 0, esperando: 0 };
   let empresaAtual = "";
   for (const o of orcamentos) {
     if (o.empresa.nome !== empresaAtual) {
       empresaAtual = o.empresa.nome;
       const p = o.empresa;
-      console.log(`\n${empresaAtual}  (cobrar com ${p.prazoCobranca1} e ${p.prazoCobranca2} dias, perdido com ${p.prazoPerdido})`);
+      console.log(`\n${empresaAtual}  (entra em "Cobrar hoje" ${p.prazoCobranca1} dias depois do envio)`);
     }
     const dias = diasDesde(o.criadoEm);
     let aviso = "ainda não é hora de cobrar";
-    if (dias >= o.empresa.prazoPerdido) {
-      aviso = "⚠️ VAI VIRAR PERDIDO ao abrir o sistema";
-      efeito.perdido++;
-    } else if (dias >= o.empresa.prazoCobranca1) {
+    if (dias >= o.empresa.prazoCobranca1) {
       aviso = "entra em Cobrar hoje";
       efeito.cobrar++;
     } else {
@@ -62,8 +60,7 @@ async function main() {
 
   console.log(`\nTotal: ${orcamentos.length} orçamento(s).`);
   console.log(`  ${efeito.cobrar} entram em "Cobrar hoje"`);
-  console.log(`  ${efeito.esperando} ainda vão esperar o prazo da 1ª cobrança`);
-  console.log(`  ${efeito.perdido} passaram do prazo de "perdido" e viram Perdido na próxima vez que o sistema for aberto`);
+  console.log(`  ${efeito.esperando} ainda vão esperar o prazo da cobrança`);
 
   if (!gravar) {
     console.log("\nMODO TESTE: nada foi gravado. Para gravar, rode de novo com  -- --gravar\n");

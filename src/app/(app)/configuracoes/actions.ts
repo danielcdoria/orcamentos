@@ -104,8 +104,9 @@ export async function removerLogo(): Promise<void> {
 }
 
 // ---------- Cobrança (prazos) ----------
-// Os 4 modelos de mensagem de cobrança (msgCobranca*) continuam no banco, mas não são mais
-// editados nem usados: a pessoa escreve cada cobrança no WhatsApp e marca "Já cobrei".
+// Uma cobrança só: prazoCobranca1 (dias depois do envio) e prazoPerdido (dias depois da
+// cobrança). prazoCobranca2 e os 4 modelos de mensagem (msgCobranca*) continuam no banco,
+// mas não são mais editados nem usados.
 
 export async function salvarCobranca(_estado: EstadoForm, formData: FormData): Promise<EstadoForm> {
   const { empresaId } = await exigirSessao();
@@ -113,24 +114,20 @@ export async function salvarCobranca(_estado: EstadoForm, formData: FormData): P
   const texto = (nome: string) => String(formData.get(nome) ?? "").trim();
   const valores: Record<string, string> = {
     prazoCobranca1: texto("prazoCobranca1"),
-    prazoCobranca2: texto("prazoCobranca2"),
     prazoPerdido: texto("prazoPerdido"),
   };
   const falhar = (erro: string): EstadoForm => ({ erro, valores });
 
-  const [p1, p2, perdido] = [valores.prazoCobranca1, valores.prazoCobranca2, valores.prazoPerdido].map(Number);
-  if (![p1, p2, perdido].every((n) => Number.isInteger(n) && n >= 1 && n <= 90)) {
+  // Os dois contam de pontos diferentes (envio e cobrança), então não há ordem entre eles.
+  const [p1, perdido] = [valores.prazoCobranca1, valores.prazoPerdido].map(Number);
+  if (![p1, perdido].every((n) => Number.isInteger(n) && n >= 1 && n <= 90)) {
     return falhar("Os dias precisam ser números entre 1 e 90.");
-  }
-  if (!(p1 < p2 && p2 < perdido)) {
-    return falhar("Os dias precisam estar em ordem: 1ª cobrança, depois 2ª cobrança, depois desistir.");
   }
 
   await prisma.empresa.update({
     where: { id: empresaId },
     data: {
       prazoCobranca1: p1,
-      prazoCobranca2: p2,
       prazoPerdido: perdido,
     },
   });
