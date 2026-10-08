@@ -239,20 +239,34 @@ async function main() {
     bOrc = await prisma.orcamento.findUniqueOrThrow({ where: { id: B.rascunho.id } });
     registrar("A tenta marcar como enviado um orçamento da B", bOrc.enviadoEm === null && bOrc.status === "rascunho");
 
-    // 3c) registrar cobrança
+    // 3c) registrar cobrança ("Já cobrei"; o primeiro cartão é o A.enviado, o mais antigo)
+    const clicarBotao = (texto: string) => async () => {
+      const botoes = await page.$$("button");
+      for (const b of botoes) if ((await b.evaluate((x) => x.textContent ?? "")).includes(texto)) return b.click();
+      throw new Error(`botão "${texto}" não encontrado`);
+    };
     await page.goto(`${BASE}/cobrar`, { waitUntil: "networkidle0" });
-    acao = await capturarAcao(page, () => page.click('a[href^="https://wa.me"]'));
+    acao = await capturarAcao(page, clicarBotao("Já cobrei"));
     await repetirComOutroId(page, acao, A.enviado.id, B.enviado.id);
     const cobrancasB = await prisma.cobranca.count({ where: { orcamentoId: B.enviado.id } });
     registrar("A tenta registrar cobrança num orçamento da B", cobrancasB === 0, `cobranças na B: ${cobrancasB}`);
 
+    // 3c2) desfazer cobrança: a B tem uma cobrança recém-feita; a A desfaz a sua e repete com o código da B
+    const cobrancaA = await prisma.cobranca.findFirstOrThrow({ where: { orcamentoId: A.enviado.id } });
+    const cobrancaB = await prisma.cobranca.create({ data: { empresaId: B.empresa.id, orcamentoId: B.enviado.id, etapa: 1 } });
+    await page.waitForFunction(() => [...document.querySelectorAll("button")].some((b) => b.textContent?.includes("Desfazer")));
+    acao = await capturarAcao(page, clicarBotao("Desfazer"));
+    await repetirComOutroId(page, acao, cobrancaA.id, cobrancaB.id);
+    const aindaTemA = await prisma.cobranca.count({ where: { id: cobrancaA.id } });
+    const aindaTemB = await prisma.cobranca.count({ where: { id: cobrancaB.id } });
+    registrar("Desfazer apaga a cobrança da própria A", aindaTemA === 0);
+    registrar("A tenta desfazer uma cobrança da B", aindaTemB === 1, `cobranças na B: ${aindaTemB}`);
+    await prisma.cobranca.deleteMany({ where: { id: cobrancaB.id } });
+
     // 3d) marcar como respondido (na fila de cobrança) — usa um orçamento novo da A, já que o anterior saiu da fila
     await prisma.cobranca.deleteMany({ where: { orcamentoId: A.enviado.id } });
     await page.goto(`${BASE}/cobrar`, { waitUntil: "networkidle0" });
-    acao = await capturarAcao(page, async () => {
-      const botoes = await page.$$("button");
-      for (const b of botoes) if ((await b.evaluate((x) => x.textContent)).includes("já respondeu")) return b.click();
-    });
+    acao = await capturarAcao(page, clicarBotao("já respondeu"));
     await repetirComOutroId(page, acao, A.enviado.id, B.enviado.id);
     const bEnviado = await prisma.orcamento.findUniqueOrThrow({ where: { id: B.enviado.id } });
     registrar("A tenta marcar como respondido um orçamento da B", bEnviado.status === "enviado", `status da B: ${bEnviado.status}`);

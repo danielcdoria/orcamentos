@@ -103,14 +103,9 @@ export async function removerLogo(): Promise<void> {
   revalidatePath("/configuracoes");
 }
 
-// ---------- Cobrança (prazos e modelos de mensagem) ----------
-
-const CAMPOS_MENSAGEM = [
-  "msgCobranca1NaoAbriu",
-  "msgCobranca1Abriu",
-  "msgCobranca2NaoAbriu",
-  "msgCobranca2Abriu",
-] as const;
+// ---------- Cobrança (prazos) ----------
+// Os 4 modelos de mensagem de cobrança (msgCobranca*) continuam no banco, mas não são mais
+// editados nem usados: a pessoa escreve cada cobrança no WhatsApp e marca "Já cobrei".
 
 export async function salvarCobranca(_estado: EstadoForm, formData: FormData): Promise<EstadoForm> {
   const { empresaId } = await exigirSessao();
@@ -121,7 +116,6 @@ export async function salvarCobranca(_estado: EstadoForm, formData: FormData): P
     prazoCobranca2: texto("prazoCobranca2"),
     prazoPerdido: texto("prazoPerdido"),
   };
-  for (const campo of CAMPOS_MENSAGEM) valores[campo] = texto(campo);
   const falhar = (erro: string): EstadoForm => ({ erro, valores });
 
   const [p1, p2, perdido] = [valores.prazoCobranca1, valores.prazoCobranca2, valores.prazoPerdido].map(Number);
@@ -131,10 +125,6 @@ export async function salvarCobranca(_estado: EstadoForm, formData: FormData): P
   if (!(p1 < p2 && p2 < perdido)) {
     return falhar("Os dias precisam estar em ordem: 1ª cobrança, depois 2ª cobrança, depois desistir.");
   }
-  for (const campo of CAMPOS_MENSAGEM) {
-    if (!valores[campo]) return falhar("Nenhuma mensagem pode ficar vazia.");
-    if (valores[campo].length > 1000) return falhar("Mensagem muito longa (máximo 1000 caracteres).");
-  }
 
   await prisma.empresa.update({
     where: { id: empresaId },
@@ -142,10 +132,6 @@ export async function salvarCobranca(_estado: EstadoForm, formData: FormData): P
       prazoCobranca1: p1,
       prazoCobranca2: p2,
       prazoPerdido: perdido,
-      msgCobranca1NaoAbriu: valores.msgCobranca1NaoAbriu,
-      msgCobranca1Abriu: valores.msgCobranca1Abriu,
-      msgCobranca2NaoAbriu: valores.msgCobranca2NaoAbriu,
-      msgCobranca2Abriu: valores.msgCobranca2Abriu,
     },
   });
 

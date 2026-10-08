@@ -6,7 +6,7 @@ arquivos (seção 5) é para consulta.
 
 **O que é:** um sistema de orçamentos para pequenas empresas (oficinas, gráficas, marcenarias).
 A empresa monta o orçamento, manda o link pelo WhatsApp, vê se o cliente abriu, e o sistema
-diz quem cobrar em cada dia, com a mensagem pronta. **Várias empresas usam o mesmo sistema**,
+diz quem cobrar em cada dia (a pessoa escreve a cobrança no WhatsApp e marca "Já cobrei"). **Várias empresas usam o mesmo sistema**,
 cada uma com o seu login, e uma nunca vê os dados da outra.
 
 **No ar:** https://orcamentos-psi-lilac.vercel.app
@@ -101,8 +101,8 @@ cada registro. Por isso estas regras são tão importantes.
 4. **O servidor recalcula tudo.** Subtotais e total de um orçamento são calculados de novo no
    servidor; nunca confie em valores que vêm do navegador.
 5. **O sistema NUNCA envia mensagem de WhatsApp sozinho**, e não se usa biblioteca não oficial
-   de WhatsApp (elas fazem o número da empresa ser banido). O sistema decide quem cobrar e
-   escreve o texto; quem toca em "Enviar" é a pessoa, pelo link `wa.me`.
+   de WhatsApp (elas fazem o número da empresa ser banido). O sistema decide quem cobrar;
+   quem escreve e manda a mensagem é a pessoa, no WhatsApp (os links são sempre `wa.me`).
 6. **Mudança no banco é sempre pelo Prisma:** edite `prisma/schema.prisma` e rode
    `npx prisma migrate dev --name ...`. Nunca altere tabelas pelo painel da Neon.
 7. **Custo, lucro e margem são internos.** A página pública e o PDF só leem os campos de
@@ -131,8 +131,8 @@ cada registro. Por isso estas regras são tão importantes.
                                              registrarAbertura (status "aberto")
                                              escolhe opções ─► salvarEscolha (total muda)
                                              pode baixar o PDF (/orcamento/<token>/pdf)
- 4. Cobrar hoje ◄── buscarFila (dias desde o envio, abriu ou não)
-    Enviar cobrança ─► registrarCobranca  |  Já respondeu ─► status "respondido"
+ 4. Cobrar hoje ◄── buscarFila (dias desde o envio)
+    Já cobrei ─► registrarCobranca (Desfazer ─► desfazerCobranca)  |  Já respondeu ─► "respondido"
  5. Painel: valor parado, enviados, fechados, taxa
 ```
 
@@ -207,17 +207,22 @@ cada registro. Por isso estas regras são tão importantes.
    sistema é aberto.
 2. `/cobrar` chama `buscarFila` (`src/lib/cobranca.ts`), que para cada orçamento **enviado ou
    aberto**: conta os dias de calendário (Brasília) desde `enviadoEm`, decide a etapa devida (1ª
-   ou 2ª, conforme os prazos dos Ajustes e as cobranças já feitas), escolhe o modelo de texto
-   (viu / não viu) e monta a mensagem. Se o cliente **mexeu nas opções** (tem `EscolhaCliente`),
+   ou 2ª, conforme os prazos dos Ajustes e as cobranças já feitas). **Não há mensagem pronta**:
+   cada cobrança é escrita à mão no WhatsApp (os 4 modelos de mensagem continuam no banco, mas
+   não são usados nem aparecem nos Ajustes). Se o cliente **mexeu nas opções** (tem `EscolhaCliente`),
    o cartão mostra "Mexeu nas opções": sinal de dúvida de preço. A tela do orçamento mostra o
    mesmo sinal, a escolha atual, o total que você propôs e cada troca no histórico.
-3. Cada cartão (`cartao-cobranca.tsx`) tem a mensagem editável e dois botões:
-   - "Enviar no WhatsApp" abre o `wa.me` e chama `registrarCobranca`, que grava uma `Cobranca`
-     (a etapa e o texto final). Assim aquela etapa não aparece de novo;
+3. Cada cartão (`cartao-cobranca.tsx`) mostra nome, telefone, há quantos dias foi enviado, o
+   nº do orçamento (link), o valor e a etapa, com dois botões:
+   - **"Já cobrei"** chama `registrarCobranca`, que grava uma `Cobranca` (a etapa, sem texto).
+     Assim aquela etapa sai da fila e da bolinha. O cartão vira a linha verde "cobrança
+     registrada ✓" com **"Desfazer"** por 8 segundos (`desfazerCobranca` apaga só aquela
+     cobrança: da empresa logada, sem texto e de menos de 10 minutos). A lista
+     (`lista-cobranca.tsx`) segura a linha verde na tela mesmo depois que a fila atualiza;
    - "O cliente já respondeu" chama `marcarRespondido`, que tira o orçamento da fila.
 4. Trocar o status para respondido, fechado ou perdido (pílula de status na lista ou no
    orçamento) também tira da fila.
-5. Quem manda a mensagem por fora (sem o botão "Enviar no WhatsApp") e só troca a pílula para
+5. Quem manda o orçamento por fora (sem o botão "Enviar no WhatsApp" da tela do orçamento) e só troca a pílula para
    **Enviado** também entra na fila: `alterarStatus` grava `enviadoEm` = agora ao mudar para
    qualquer status depois de rascunho, **se ainda estiver vazio** (nunca sobrescreve).
 
@@ -236,7 +241,7 @@ e os enviados, fechados e a taxa de fechamento **entre os enviados no mês atual
 
 | Tabela | O que guarda |
 |---|---|
-| `Empresa` | Cada empresa cliente: nome, telefone, condição de pagamento, dias de validade, mensagem de envio, prazos de cobrança (1ª, 2ª, desistir), os 4 modelos de mensagem de cobrança e o Pix (chave e nome do recebedor, opcionais, só para exibir). |
+| `Empresa` | Cada empresa cliente: nome, telefone, condição de pagamento, dias de validade, mensagem de envio, prazos de cobrança (1ª, 2ª, desistir), os 4 modelos de mensagem de cobrança (guardados, mas **não usados** desde out/2026) e o Pix (chave e nome do recebedor, opcionais, só para exibir). |
 | `EmpresaLogo` | A imagem do logo (PNG/JPG), separada para não pesar nas outras consultas. |
 | `Usuario` | O login da empresa (um por empresa): email, hash da senha, contador de tentativas erradas e bloqueio. |
 | `Sessao` | Cada login aberto (um celular, um computador). Guarda o hash do código do cookie. Dura 30 dias. |
@@ -245,7 +250,7 @@ e os enviados, fechados e a taxa de fechamento **entre os enviados no mês atual
 | `Orcamento` | Número, cliente, total (centavos; soma dos itens **incluídos**, muda quando o cliente troca uma opção), observação, validade, status, token do link, datas de envio/abertura, vezes aberto. |
 | `OrcamentoItem` | As linhas do orçamento: cópia da descrição e do preço, quantidade (aceita 2,5), subtotal, **custo por unidade** (opcional, interno: nunca vai para o cliente) e as opções: `tipo` (fixo, opcao, adicional), `grupo`, `padrao` e `incluido` (está no total agora). Orçamentos antigos: tudo fixo e incluído. |
 | `EscolhaCliente` | Cada vez que o cliente mudou as opções na página: resumo da escolha, total e quando. Máximo de 100 por orçamento. |
-| `Cobranca` | Cada cobrança enviada: etapa (1 ou 2) e o texto. Uma por etapa por orçamento. |
+| `Cobranca` | Cada cobrança feita: etapa (1 ou 2) e quando. O texto (`mensagem`) só existe nas antigas, da época da mensagem pronta; as do "Já cobrei" ficam sem texto. Uma por etapa por orçamento. |
 
 **Status do orçamento:** `rascunho` → `enviado` (tocou em Enviar) → `aberto` (cliente viu,
 automático) → `respondido` / `fechado` / `perdido` (à mão; perdido também é automático após o
@@ -299,7 +304,7 @@ Pastas geradas (fora do git, não se edita): `node_modules/` (bibliotecas, recri
 | `telefone.ts` | `telefoneParaWhatsApp` ("(21) 99999-8888" → "5521999998888") e `formatarTelefone`. |
 | `mensagem.ts` | `montarMensagem`: troca `{nome}`, `{cliente}`, `{empresa}`, `{valor}`, `{link}`, `{validade}`, `{numero}` pelos dados reais. |
 | `status.ts` | Nome e cor de cada status, e quais contam como "esperando o cliente". |
-| `cobranca.ts` | **A regra de cobrança** (passo 4): dias desde o envio, etapa devida, fila do dia, contagem para a bolinha, perdidos automáticos. |
+| `cobranca.ts` | **A regra de cobrança** (passo 4): dias desde o envio, etapa devida, fila do dia (sem mensagem pronta), contagem para a bolinha, perdidos automáticos. |
 | `abertura.ts` | Decide se uma visita ao link conta como abertura e grava a abertura (passo 3). |
 | `margem.ts` | Custo total, lucro e margem de um orçamento (margem = lucro ÷ venda) e a faixa de cor (verde > 30%, amarelo 15–30%, vermelho < 15%). Interno. |
 | `opcoes.ts` | **Opções que o cliente escolhe**: separa fixos, grupos e adicionais, define a padrão de cada grupo, soma o total e escreve o resumo ("Material: MDF comum · + LED"). Roda no servidor e no navegador. |
@@ -354,8 +359,9 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `orcamentos/[id]/botoes-envio.tsx` | "Enviar no WhatsApp" e "Copiar link do orçamento". |
 | `orcamentos/actions.ts` | `salvarOrcamento` (com `jaEnviado`, já grava enviado + `enviadoEm`), `marcarEnviado`, `alterarStatus` (que também grava a data de envio, se estiver vazia). |
 | `cobrar/page.tsx` | **Cobrar hoje**, a tela principal do produto (passo 4). |
-| `cobrar/cartao-cobranca.tsx` | Um cartão por cliente com a mensagem pronta e os dois botões. |
-| `cobrar/actions.ts` | `registrarCobranca` e `marcarRespondido`. |
+| `cobrar/lista-cobranca.tsx` | A lista da tela: guarda os cartões concluídos nesta visita (a linha verde fica no mesmo lugar) e faz o "Desfazer" trazer o cartão de volta. |
+| `cobrar/cartao-cobranca.tsx` | Um cartão por cliente (nome, telefone, dias, nº, valor, etapa) com "Já cobrei" e "O cliente já respondeu"; e a linha verde de confirmação com "Desfazer" por 8 s. |
+| `cobrar/actions.ts` | `registrarCobranca` (devolve o id), `desfazerCobranca` e `marcarRespondido`. |
 | `painel/page.tsx` | Os quatro números do mês, o funil por status e a comparação das abordagens (passo 5). |
 | `clientes/page.tsx` | Lista de clientes (busca os da empresa e entrega à lista abaixo). |
 | `clientes/lista-clientes.tsx` | A lista com busca instantânea no navegador (nome, cidade e telefone, sem acento), "3 de 120" e "Cadastrar “nome”" quando não acha. Embaixo do nome: cidade · abordagem · nota. À direita: ícones de WhatsApp e demo (fora do link da linha). |
@@ -370,7 +376,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `catalogo/actions.ts` | `salvarItem`, `apagarItem`. |
 | `configuracoes/page.tsx` | Tela **Ajustes**: logo, dados da empresa, cobrança e "Sair do sistema". |
 | `configuracoes/form-empresa.tsx` | Nome, telefone, condição de pagamento, Pix (chave e recebedor, opcionais), validade e mensagem de envio (com exemplo ao vivo). |
-| `configuracoes/form-cobranca.tsx` | Prazos (1ª, 2ª, desistir) e os 4 modelos de cobrança. |
+| `configuracoes/form-cobranca.tsx` | Prazos (1ª, 2ª, desistir). Os 4 modelos de mensagem de cobrança não aparecem mais. |
 | `configuracoes/logo.tsx` | Enviar/trocar/remover logo; reduz a imagem no navegador (512px, PNG). |
 | `configuracoes/actions.ts` | `salvarEmpresa`, `salvarCobranca`, `salvarLogo` (confere se é mesmo PNG/JPG/WebP), `removerLogo`. |
 
@@ -404,7 +410,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `demo/logo-oficina-silva.png`, `demo/logo-madeira-nobre.png` | Logos das empresas de demonstração. |
 | `preencher-envio.ts` | Correção única: dá data de envio (= data de criação) aos orçamentos Enviados sem ela. Modo teste por padrão; `--gravar` grava. Ver seção 1. |
 | `migrar-abordagem.ts` | Correção única: passa "Mensagem antes" / "Site pronto antes" da Observação para o campo Abordagem. Modo teste por padrão; `--gravar` grava. Não mexe em quem já tem outra abordagem (só avisa). Ver seção 1. |
-| `teste-isolamento.ts` | Teste de vazamento: cria as empresas de teste A e B e, logada como A, tenta abrir, listar e alterar dados da B (repetindo chamadas reais trocando o código do registro). Confere no banco que nada da B mudou. Inclui as buscas da lista de orçamentos (por nome e por número, que as duas empresas têm). Também confere que o **custo** não aparece na página pública nem no PDF (com e sem opções), e ataca a escolha de opções (itens de outro orçamento, escolha inválida, prévia do dono, orçamento fechado). Apaga as empresas de teste no fim. Usa `puppeteer-core` e o Google Chrome. |
+| `teste-isolamento.ts` | Teste de vazamento: cria as empresas de teste A e B e, logada como A, tenta abrir, listar e alterar dados da B (repetindo chamadas reais trocando o código do registro), inclusive registrar e desfazer cobrança. Confere no banco que nada da B mudou. Inclui as buscas da lista de orçamentos (por nome e por número, que as duas empresas têm). Também confere que o **custo** não aparece na página pública nem no PDF (com e sem opções), e ataca a escolha de opções (itens de outro orçamento, escolha inválida, prévia do dono, orçamento fechado). Apaga as empresas de teste no fim. Usa `puppeteer-core` e o Google Chrome. |
 
 ---
 
@@ -414,7 +420,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 |---|---|
 | Cadastrar um cliente pagante novo | `npm run criar-empresa:producao` |
 | Mudar cores, botões, tamanhos | `src/app/globals.css` (cor `marca`) e `src/components/estilos.ts` |
-| Mudar os textos padrão das mensagens | Empresas novas: `@default(...)` em `prisma/schema.prisma` (+ migration). Empresas existentes: tela Ajustes de cada uma. |
+| Mudar o texto padrão da mensagem de envio do orçamento | Empresas novas: `@default(...)` em `prisma/schema.prisma` (+ migration). Empresas existentes: tela Ajustes de cada uma. (As mensagens de cobrança não são mais usadas.) |
 | Mudar a regra de cobrança | `src/lib/cobranca.ts` (os prazos em si ficam nos Ajustes de cada empresa) |
 | Mudar como funcionam as opções (grupo, padrão, total) | `src/lib/opcoes.ts`; a tela do cliente em `src/app/orcamento/[token]/escolha.tsx` |
 | Mudar como a busca acha as coisas (acentos, telefone) | `src/lib/busca.ts` |

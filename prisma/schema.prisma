@@ -249,7 +249,7 @@ model Cobranca {
   empresaId   String
   orcamentoId String
   etapa       Int // 1 = primeira cobrança, 2 = segunda
-  mensagem    String // o texto que foi enviado (depois de editado)
+  mensagem    String? // o texto enviado pela tela antiga; vazio quando vem do "Já cobrei" (a pessoa escreve no WhatsApp)
   enviadaEm   DateTime @default(now())
 
   empresa   Empresa   @relation(fields: [empresaId], references: [id])

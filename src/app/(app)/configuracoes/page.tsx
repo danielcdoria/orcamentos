@@ -45,10 +45,6 @@ export default async function PaginaConfiguracoes() {
             prazoCobranca1: String(empresa.prazoCobranca1),
             prazoCobranca2: String(empresa.prazoCobranca2),
             prazoPerdido: String(empresa.prazoPerdido),
-            msgCobranca1NaoAbriu: empresa.msgCobranca1NaoAbriu,
-            msgCobranca1Abriu: empresa.msgCobranca1Abriu,
-            msgCobranca2NaoAbriu: empresa.msgCobranca2NaoAbriu,
-            msgCobranca2Abriu: empresa.msgCobranca2Abriu,
           }}
         />
       </section>

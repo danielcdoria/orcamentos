@@ -5,24 +5,57 @@ import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { STATUS_AGUARDANDO } from "@/lib/status";
 
-// Chamado quando a pessoa toca em "Enviar no WhatsApp" na tela Cobrar hoje.
-// Registra que aquela etapa foi cobrada, para o orçamento sair da fila e não aparecer
-// de novo. (Quem envia a mensagem de verdade é a pessoa, no WhatsApp.)
-export async function registrarCobranca(orcamentoId: string, etapa: number, mensagem: string) {
+// Chamado quando a pessoa toca em "Já cobrei" na tela Cobrar hoje (ela mesma escreveu a
+// mensagem no WhatsApp). Registra que aquela etapa foi cobrada, para o orçamento sair da
+// fila e não aparecer de novo. Devolve o id da cobrança, para o "Desfazer".
+export async function registrarCobranca(orcamentoId: string, etapa: number): Promise<string | null> {
   const { empresaId } = await exigirSessao();
-  if (etapa !== 1 && etapa !== 2) return;
+  if (etapa !== 1 && etapa !== 2) return null;
 
   const orcamento = await prisma.orcamento.findFirst({
     where: { id: orcamentoId, empresaId, status: { in: STATUS_AGUARDANDO } },
     select: { id: true },
   });
-  if (!orcamento) return;
+  if (!orcamento) return null;
 
   await prisma.cobranca.createMany({
-    data: [{ empresaId, orcamentoId, etapa, mensagem: String(mensagem).slice(0, 2000) }],
+    data: [{ empresaId, orcamentoId, etapa }], // sem mensagem: foi escrita à mão no WhatsApp
     skipDuplicates: true, // tocou duas vezes? registra uma só
   });
+  const cobranca = await prisma.cobranca.findFirst({
+    where: { orcamentoId, etapa, empresaId },
+    select: { id: true },
+  });
 
+  atualizarTelas(orcamentoId);
+  return cobranca?.id ?? null;
+}
+
+// "Desfazer" logo depois do "Já cobrei" (tocou na pousada errada): apaga aquela cobrança e o
+// orçamento volta para a fila. Só apaga se for desta empresa, recente e sem mensagem, ou seja,
+// uma cobrança que acabou de ser feita pelo "Já cobrei", nunca uma antiga.
+const JANELA_DESFAZER_MS = 10 * 60 * 1000;
+
+export async function desfazerCobranca(cobrancaId: string) {
+  const { empresaId } = await exigirSessao();
+  const cobranca = await prisma.cobranca.findFirst({
+    where: { id: cobrancaId, empresaId },
+    select: { orcamentoId: true },
+  });
+  if (!cobranca) return;
+
+  await prisma.cobranca.deleteMany({
+    where: {
+      id: cobrancaId,
+      empresaId,
+      mensagem: null,
+      enviadaEm: { gte: new Date(Date.now() - JANELA_DESFAZER_MS) },
+    },
+  });
+  atualizarTelas(cobranca.orcamentoId);
+}
+
+function atualizarTelas(orcamentoId: string) {
   revalidatePath("/cobrar");
   revalidatePath("/orcamentos");
   revalidatePath(`/orcamentos/${orcamentoId}`);
@@ -35,7 +68,5 @@ export async function marcarRespondido(orcamentoId: string) {
     where: { id: orcamentoId, empresaId },
     data: { status: "respondido" },
   });
-  revalidatePath("/cobrar");
-  revalidatePath("/orcamentos");
-  revalidatePath(`/orcamentos/${orcamentoId}`);
+  atualizarTelas(orcamentoId);
 }

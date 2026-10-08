@@ -1,8 +1,5 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { formatarCentavos } from "@/lib/dinheiro";
-import { formatarData } from "@/lib/formatos";
-import { montarMensagem } from "@/lib/mensagem";
 import { STATUS_AGUARDANDO } from "@/lib/status";
 
 // ============================================================================
@@ -16,7 +13,8 @@ import { STATUS_AGUARDANDO } from "@/lib/status";
 // Não existe um "relógio" rodando: a regra é aplicada toda vez que alguém abre o
 // sistema. Mesmo que ninguém entre por uma semana, ao entrar tudo aparece certo.
 //
-// O sistema NUNCA envia mensagem sozinho. Ele só decide quem cobrar e escreve o texto.
+// O sistema NUNCA envia mensagem sozinho. Ele só decide quem cobrar; a pessoa escreve a
+// mensagem no WhatsApp e toca em "Já cobrei".
 // ============================================================================
 
 const FUSO = "America/Sao_Paulo";
@@ -64,9 +62,7 @@ export type ItemFila = {
   telefone: string | null;
   total: number;
   dias: number; // há quantos dias foi enviado
-  abriu: boolean;
   etapa: 1 | 2;
-  mensagem: string; // já montada a partir do modelo certo
   // O cliente mexeu nas opções do orçamento (e não respondeu): sinal de dúvida de preço
   mexeuNasOpcoes: { vezes: number; dias: number; resumo: string } | null;
 };
@@ -102,43 +98,23 @@ export async function contarFila(empresaId: string): Promise<number> {
   return devidos.length;
 }
 
-// A fila de "Cobrar hoje": quem precisa ser cobrado, com a mensagem pronta.
-// linkDoOrcamento monta o link público a partir do token (o endereço depende do site).
-export async function buscarFila(
-  empresaId: string,
-  linkDoOrcamento: (token: string) => string,
-): Promise<ItemFila[]> {
-  const { empresa, devidos } = await orcamentosDevidos(empresaId);
+// A fila de "Cobrar hoje": quem precisa ser cobrado hoje e em qual etapa.
+// (Os modelos de mensagem da empresa não são mais usados: cada conversa é escrita à mão.)
+export async function buscarFila(empresaId: string): Promise<ItemFila[]> {
+  const { devidos } = await orcamentosDevidos(empresaId);
 
-  const fila: ItemFila[] = devidos.map(({ o, dias, etapa }) => {
-    const abriu = o.abertoEm !== null;
-    const modelo =
-      etapa === 1
-        ? abriu ? empresa.msgCobranca1Abriu : empresa.msgCobranca1NaoAbriu
-        : abriu ? empresa.msgCobranca2Abriu : empresa.msgCobranca2NaoAbriu;
-
-    return {
-      orcamentoId: o.id,
-      numero: o.numero,
-      cliente: o.cliente.nome,
-      telefone: o.cliente.telefone,
-      total: o.total,
-      dias,
-      abriu,
-      etapa,
-      mexeuNasOpcoes: o.escolhas[0]
-        ? { vezes: o._count.escolhas, dias: diasDesde(o.escolhas[0].criadaEm), resumo: o.escolhas[0].resumo }
-        : null,
-      mensagem: montarMensagem(modelo, {
-        cliente: o.cliente.nome,
-        empresa: empresa.nome,
-        valor: formatarCentavos(o.total),
-        link: linkDoOrcamento(o.token),
-        validade: formatarData(o.validoAte),
-        numero: String(o.numero),
-      }),
-    };
-  });
+  const fila: ItemFila[] = devidos.map(({ o, dias, etapa }) => ({
+    orcamentoId: o.id,
+    numero: o.numero,
+    cliente: o.cliente.nome,
+    telefone: o.cliente.telefone,
+    total: o.total,
+    dias,
+    etapa,
+    mexeuNasOpcoes: o.escolhas[0]
+      ? { vezes: o._count.escolhas, dias: diasDesde(o.escolhas[0].criadaEm), resumo: o.escolhas[0].resumo }
+      : null,
+  }));
 
   // Os mais antigos primeiro (dinheiro mais perto de esfriar)
   return fila.sort((a, b) => b.dias - a.dias);
