@@ -139,8 +139,11 @@ cada registro. Por isso estas regras são tão importantes.
    **da empresa logada** e entrega ao formulário.
 2. O formulário (`form-orcamento.tsx`) roda no navegador: a pessoa escolhe o cliente, busca
    itens do catálogo, ajusta quantidade e preço, e vê o total mudar na hora
-   (`calcularSubtotal` em `src/lib/dinheiro.ts`). Cliente novo? O link "Cliente novo? Cadastrar"
-   vai para `/clientes/novo?voltar=orcamento` e volta com o cliente já escolhido.
+   (`calcularSubtotal` em `src/lib/dinheiro.ts`). O cliente é escolhido por **busca** (nome ou
+   telefone, sem ligar para acentos); se o cliente já tem um orçamento que não está perdido,
+   aparece um aviso (só aviso, não impede). Cliente novo? "Cadastrar “nome digitado”" (ou o
+   link "Cliente novo? Cadastrar") vai para `/clientes/novo?voltar=orcamento&nome=...` e volta
+   com o cliente já escolhido.
    Opções para o cliente, a partir de cada item: **"Dar opções ao cliente"** cria um cartão de
    escolha (as outras opções são adicionadas dentro dele; o cliente escolhe 1, e a marcada ●
    já vem escolhida) e **"Opcional"** vira adicional (o cliente marca se quiser). No banco, isso
@@ -290,6 +293,7 @@ Pastas geradas (fora do git, não se edita): `node_modules/` (bibliotecas, recri
 | `opcoes.ts` | **Opções que o cliente escolhe**: separa fixos, grupos e adicionais, define a padrão de cada grupo, soma o total e escreve o resumo ("Material: MDF comum · + LED"). Roda no servidor e no navegador. |
 | `publico.ts` | **O que pode ir para o cliente final**: os únicos campos que a página pública e o PDF pedem ao banco. O custo não está aqui, por isso nem sai do banco nesses caminhos. |
 | `mes.ts` | Início, fim e nome do mês atual em Brasília (para o painel). |
+| `busca.ts` | **Busca sem acento**: `normalizar` ("Matitaterê" → "matitatere"), `textoBate` (todas as palavras aparecem, em qualquer ordem) e `clienteBate` (nome, ou os dígitos do telefone). Usada nas listas e no novo orçamento; roda no servidor e no navegador. |
 | `url.ts` | `urlBase()`: endereço do site para montar links. No `npm run dev`, troca `localhost` pelo IP do Mac na rede. |
 
 ### Componentes compartilhados (`src/components/`)
@@ -328,9 +332,10 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `menu.tsx` | Menu de 4 ícones (Orçamentos, Cobrar hoje, Catálogo, Painel): embaixo no celular, no topo no computador. Bolinha vermelha em Cobrar hoje. |
 | `page.tsx` | `/` só redireciona para `/orcamentos`. |
 | `actions.ts` | `sair`: apaga a sessão. |
-| `orcamentos/page.tsx` | Lista de orçamentos (mais recentes primeiro), faixa de cobrança pendente, pílula de status e "Viu / Não viu". |
-| `orcamentos/novo/page.tsx` | Tela de novo orçamento (explica o que falta se não houver cliente ou catálogo). |
-| `orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento com total ao vivo (passo 1): custo; "Opcional" (adicional) e "Dar opções ao cliente", que transforma o item num cartão de escolha onde se adicionam as outras opções (a marcada ● já vem escolhida). Se o item não está no catálogo, dá para usar o nome digitado e pôr o preço na hora. |
+| `orcamentos/page.tsx` | Lista de orçamentos (mais recentes primeiro), faixa de cobrança pendente, pílula de status e "Viu / Não viu". Busca e filtro **no servidor**, pelo endereço (`?busca=lumiar&status=enviado`): pelo nome do cliente (sem acento) ou pelo número. Pílulas de status com a contagem (Rascunho e Aberto só aparecem se houver algum). Mostra 100 por vez, com "Mostrando 100 de 340" e "Mostrar mais" (`?limite=`). |
+| `orcamentos/busca-orcamentos.tsx` | A barra de busca da lista: atualiza o endereço 0,3 s depois de parar de digitar (o servidor é que procura). |
+| `orcamentos/novo/page.tsx` | Tela de novo orçamento (explica o que falta se não houver cliente ou catálogo). Manda ao formulário os clientes (nome e telefone) e os orçamentos não perdidos de cada um, para o aviso de duplicado. |
+| `orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento com total ao vivo (passo 1): custo; "Opcional" (adicional) e "Dar opções ao cliente", que transforma o item num cartão de escolha onde se adicionam as outras opções (a marcada ● já vem escolhida). Se o item não está no catálogo, dá para usar o nome digitado e pôr o preço na hora. O cliente é escolhido pela busca (`BuscaCliente`), com "Trocar" e o aviso "já tem o orçamento nº X". |
 | `orcamentos/[id]/page.tsx` | Um orçamento: total, escolha do cliente (e o sinal "mexeu nas opções"), margem, envio, "Ver como o cliente vê", PDF, itens (por grupo), observação e histórico. |
 | `orcamentos/[id]/botoes-envio.tsx` | "Enviar no WhatsApp" e "Copiar link do orçamento". |
 | `orcamentos/actions.ts` | `salvarOrcamento`, `marcarEnviado`, `alterarStatus`. |
@@ -338,8 +343,9 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `cobrar/cartao-cobranca.tsx` | Um cartão por cliente com a mensagem pronta e os dois botões. |
 | `cobrar/actions.ts` | `registrarCobranca` e `marcarRespondido`. |
 | `painel/page.tsx` | Os quatro números (passo 5). |
-| `clientes/page.tsx` | Lista de clientes. |
-| `clientes/novo/page.tsx` | Novo cliente (com `?voltar=orcamento`, volta ao orçamento com o cliente escolhido). |
+| `clientes/page.tsx` | Lista de clientes (busca os da empresa e entrega à lista abaixo). |
+| `clientes/lista-clientes.tsx` | A lista com busca instantânea no navegador (nome e telefone, sem acento), "3 de 120" e "Cadastrar “nome”" quando não acha. |
+| `clientes/novo/page.tsx` | Novo cliente (com `?voltar=orcamento`, volta ao orçamento com o cliente escolhido; com `?nome=`, já abre com o nome preenchido). |
 | `clientes/[id]/page.tsx` | Editar cliente. |
 | `clientes/form-cliente.tsx` | Formulário de cliente (nome, WhatsApp, observação). |
 | `clientes/actions.ts` | `salvarCliente`. |
@@ -382,7 +388,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `demo-oficina.ts` | Dados da Oficina Silva: 12 clientes, 25 itens, 18 orçamentos (`npm run demo` / `:producao`). |
 | `demo-marcenaria.ts` | Dados da Madeira Nobre, marcenaria de móveis sob medida e montagem: 12 clientes, 30 itens, 18 orçamentos, um deles com opções (Thiago: o cliente escolhe o material) (`npm run demo:marcenaria` / `:producao`). Login `demo@madeiranobre.com.br`. |
 | `demo/logo-oficina-silva.png`, `demo/logo-madeira-nobre.png` | Logos das empresas de demonstração. |
-| `teste-isolamento.ts` | Teste de vazamento: cria as empresas de teste A e B e, logada como A, tenta abrir, listar e alterar dados da B (repetindo chamadas reais trocando o código do registro). Confere no banco que nada da B mudou. Também confere que o **custo** não aparece na página pública nem no PDF (com e sem opções), e ataca a escolha de opções (itens de outro orçamento, escolha inválida, prévia do dono, orçamento fechado). Apaga as empresas de teste no fim. Usa `puppeteer-core` e o Google Chrome. |
+| `teste-isolamento.ts` | Teste de vazamento: cria as empresas de teste A e B e, logada como A, tenta abrir, listar e alterar dados da B (repetindo chamadas reais trocando o código do registro). Confere no banco que nada da B mudou. Inclui as buscas da lista de orçamentos (por nome e por número, que as duas empresas têm). Também confere que o **custo** não aparece na página pública nem no PDF (com e sem opções), e ataca a escolha de opções (itens de outro orçamento, escolha inválida, prévia do dono, orçamento fechado). Apaga as empresas de teste no fim. Usa `puppeteer-core` e o Google Chrome. |
 
 ---
 
@@ -395,6 +401,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | Mudar os textos padrão das mensagens | Empresas novas: `@default(...)` em `prisma/schema.prisma` (+ migration). Empresas existentes: tela Ajustes de cada uma. |
 | Mudar a regra de cobrança | `src/lib/cobranca.ts` (os prazos em si ficam nos Ajustes de cada empresa) |
 | Mudar como funcionam as opções (grupo, padrão, total) | `src/lib/opcoes.ts`; a tela do cliente em `src/app/orcamento/[token]/escolha.tsx` |
+| Mudar como a busca acha as coisas (acentos, telefone) | `src/lib/busca.ts` |
 | Mudar o que conta como "cliente abriu" | `src/lib/abertura.ts` |
 | Mudar a página que o cliente vê | `src/app/orcamento/[token]/page.tsx` (e o PDF em `pdf/documento-pdf.tsx`, para ficarem iguais) |
 | Adicionar um campo ao orçamento | `schema.prisma` + migration → `orcamentos/actions.ts` → `form-orcamento.tsx` → telas `orcamentos/[id]`, página pública e PDF |

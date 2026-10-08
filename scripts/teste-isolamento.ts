@@ -198,7 +198,8 @@ async function main() {
   }
 
   // 2) Nenhuma tela da A mostra dados da B
-  for (const caminho of ["/orcamentos", "/clientes", "/catalogo", "/catalogo?busca=SECRETO", "/orcamentos/novo", "/cobrar", "/painel", "/configuracoes"]) {
+  // As buscas por "SECRETO" e pelo nº 2 (que as duas empresas têm) só podem achar o que é da A.
+  for (const caminho of ["/orcamentos", "/orcamentos?busca=SECRETO", "/orcamentos?busca=2&status=enviado", "/clientes", "/catalogo", "/catalogo?busca=SECRETO", "/orcamentos/novo", "/cobrar", "/painel", "/configuracoes"]) {
     const r = await pagina(A.sessao, caminho);
     const mostraA = caminho === "/painel" || caminho === "/configuracoes" || r.corpo.includes("SECRETO-A");
     registrar(`Tela ${caminho} da A não mostra nada da B`, r.status === 200 && !r.corpo.includes("SECRETO-B") && mostraA, `HTTP ${r.status}`);
@@ -277,8 +278,8 @@ async function main() {
     registrar("A tenta apagar um item da B", bItemExiste === 1);
 
     // 3h) criar orçamento para um cliente da B
-    await page.goto(`${BASE}/orcamentos/novo`, { waitUntil: "networkidle0" });
-    await page.select("#cliente", A.cliente.id);
+    // ?cliente= já deixa o cliente da A escolhido (como na volta do cadastro de cliente)
+    await page.goto(`${BASE}/orcamentos/novo?cliente=${A.cliente.id}`, { waitUntil: "networkidle0" });
     await page.type("#busca", "SECRETO");
     await page.waitForFunction(() => [...document.querySelectorAll("button")].some((b) => b.textContent?.includes("ITEM-SECRETO-A")));
     await page.evaluate(() => ([...document.querySelectorAll("button")].find((b) => b.textContent?.includes("ITEM-SECRETO-A")) as HTMLButtonElement).click());

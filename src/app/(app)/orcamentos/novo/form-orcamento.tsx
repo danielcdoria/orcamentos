@@ -11,11 +11,15 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ListChecks, Plus, Search, Trash2, Undo2, UserPlus } from "lucide-react";
+import { AlertTriangle, ListChecks, Plus, Search, Trash2, Undo2, UserPlus } from "lucide-react";
 import { salvarOrcamento, type DadosOrcamento } from "../actions";
 import { calcularSubtotal, centavosParaTexto, formatarCentavos, lerQuantidade, lerReais } from "@/lib/dinheiro";
 import { calcularMargem } from "@/lib/margem";
 import { chaveGrupo, padroesEfetivos, type Tipo } from "@/lib/opcoes";
+import { clienteBate, normalizar } from "@/lib/busca";
+import { STATUS } from "@/lib/status";
+import { formatarTelefone } from "@/lib/telefone";
+import type { StatusOrcamento } from "@/generated/prisma/enums";
 import { BlocoMargem } from "@/components/bloco-margem";
 import {
   estiloBotao,
@@ -26,7 +30,8 @@ import {
   estiloRotulo,
 } from "@/components/estilos";
 
-type Cliente = { id: string; nome: string };
+type Cliente = { id: string; nome: string; telefone: string | null };
+type Existente = { numero: number; status: StatusOrcamento };
 type ItemCatalogo = { id: string; descricao: string; preco: number; unidade: string; custo: number | null };
 
 // Cada linha guarda o que foi DIGITADO (texto), para a pessoa poder apagar e
@@ -74,10 +79,12 @@ export function FormOrcamento({
   clientes,
   catalogo,
   clienteInicial,
+  existentes,
 }: {
   clientes: Cliente[];
   catalogo: ItemCatalogo[];
   clienteInicial: string;
+  existentes: Record<string, Existente[]>; // orçamentos não perdidos de cada cliente
 }) {
   const [clienteId, setClienteId] = useState(clienteInicial);
   const [linhas, setLinhas] = useState<Linha[]>([]);
@@ -310,21 +317,13 @@ export function FormOrcamento({
         <label htmlFor="cliente" className={estiloRotulo}>
           Para qual cliente?
         </label>
-        <select id="cliente" value={clienteId} onChange={(e) => setClienteId(e.target.value)} className={estiloCampo}>
-          <option value="">Escolha o cliente...</option>
-          {clientes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nome}
-            </option>
-          ))}
-        </select>
-        <Link
-          href="/clientes/novo?voltar=orcamento"
-          className="flex min-h-11 w-fit items-center gap-2 text-base font-medium text-gray-800 underline underline-offset-2"
-        >
-          <UserPlus className="size-5" aria-hidden />
-          Cliente novo? Cadastrar
-        </Link>
+        <BuscaCliente
+          id="cliente"
+          clientes={clientes}
+          clienteId={clienteId}
+          existentes={existentes[clienteId] ?? []}
+          aoEscolher={setClienteId}
+        />
       </div>
 
       {/* 2. Itens do catálogo */}
@@ -489,6 +488,126 @@ export function FormOrcamento({
           Cancelar
         </Link>
       </div>
+    </div>
+  );
+}
+
+// Escolha do cliente: busca por nome ou telefone (sem ligar para acentos). Escolhido, vira
+// um cartão com "Trocar". Se não achar, oferece cadastrar com o nome já digitado.
+function BuscaCliente({
+  id,
+  clientes,
+  clienteId,
+  existentes,
+  aoEscolher,
+}: {
+  id: string;
+  clientes: Cliente[];
+  clienteId: string;
+  existentes: Existente[];
+  aoEscolher: (id: string) => void;
+}) {
+  const [busca, setBusca] = useState("");
+  const [trocando, setTrocando] = useState(false); // tocou em "Trocar": o cursor já vai para a busca
+  const escolhido = clientes.find((c) => c.id === clienteId);
+
+  if (escolhido) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className={`${estiloCartao} flex min-h-16 items-center gap-3 px-4 py-3`}>
+          <div className="min-w-0 flex-1">
+            <p id={id} className="truncate text-lg font-semibold">{escolhido.nome}</p>
+            {escolhido.telefone && <p className="text-base text-gray-600">{formatarTelefone(escolhido.telefone)}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              aoEscolher("");
+              setBusca("");
+              setTrocando(true);
+            }}
+            className={`${estiloBotaoSecundario} shrink-0`}
+          >
+            Trocar
+          </button>
+        </div>
+        {existentes.length > 0 && (
+          // Só um aviso: às vezes é mesmo para fazer outro orçamento.
+          <p role="status" className="flex gap-2 rounded-xl bg-amber-50 px-4 py-3 text-base text-amber-900">
+            <AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden />
+            <span>
+              {existentes.length === 1 ? "Esta pousada já tem o orçamento " : "Esta pousada já tem os orçamentos "}
+              {existentes
+                .map((o) => `nº ${o.numero} (${STATUS[o.status].rotulo.replace(" ✓", "")})`)
+                .join(", ")}
+              .
+            </span>
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  const digitado = busca.trim();
+  const resultados = digitado ? clientes.filter((c) => clienteBate(c, digitado)).slice(0, 8) : [];
+  const existeIgual = clientes.some((c) => normalizar(c.nome) === normalizar(digitado));
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="relative">
+        <Search className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-gray-400" aria-hidden />
+        <input
+          id={id}
+          type="search"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Digite o nome ou o telefone"
+          autoComplete="off"
+          autoFocus={trocando}
+          className={`${estiloCampo} pl-12`}
+        />
+      </div>
+      {digitado && (
+        <ul className={`${estiloCartao} divide-y divide-gray-200 overflow-hidden`}>
+          {resultados.map((c) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                onClick={() => aoEscolher(c.id)}
+                className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-base font-medium">{c.nome}</span>
+                  {c.telefone && <span className="block text-sm text-gray-600">{formatarTelefone(c.telefone)}</span>}
+                </span>
+              </button>
+            </li>
+          ))}
+          {!existeIgual && digitado.length <= 120 && (
+            <li>
+              <Link
+                href={`/clientes/novo?voltar=orcamento&nome=${encodeURIComponent(digitado)}`}
+                className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
+              >
+                <UserPlus className="size-5 shrink-0 text-gray-500" aria-hidden />
+                <span className="flex-1 text-base">
+                  Cadastrar “{digitado}”
+                  {resultados.length === 0 && (
+                    <span className="block text-sm text-gray-600">Nenhum cliente com esse nome ou telefone.</span>
+                  )}
+                </span>
+              </Link>
+            </li>
+          )}
+        </ul>
+      )}
+      <Link
+        href="/clientes/novo?voltar=orcamento"
+        className="flex min-h-11 w-fit items-center gap-2 text-base font-medium text-gray-800 underline underline-offset-2"
+      >
+        <UserPlus className="size-5" aria-hidden />
+        Cliente novo? Cadastrar
+      </Link>
     </div>
   );
 }

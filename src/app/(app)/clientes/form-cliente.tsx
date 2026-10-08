@@ -8,13 +8,21 @@ import { estiloBotao, estiloBotaoSecundario, estiloCampo, estiloErro, estiloRotu
 type Cliente = { id: string; nome: string; telefone: string | null; observacao: string | null };
 
 // O mesmo formulário serve para criar (sem cliente) e editar (com cliente).
-export function FormCliente({ cliente, voltar }: { cliente?: Cliente; voltar?: string }) {
+export function FormCliente({
+  cliente,
+  voltar,
+  nomeInicial,
+}: {
+  cliente?: Cliente;
+  voltar?: string;
+  nomeInicial?: string; // cadastro vindo de uma busca sem resultado: já vem com o nome digitado
+}) {
   // bind "prende" o id e o "voltar" como primeiros argumentos da ação
   const acaoComId = salvarCliente.bind(null, cliente?.id ?? null, voltar ?? null);
   const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(acaoComId, {});
   // Depois de um erro, mostra o que foi digitado; senão, os dados do cliente (ou vazio).
   const v = estado.valores ?? {
-    nome: cliente?.nome ?? "",
+    nome: cliente?.nome ?? nomeInicial ?? "",
     telefone: cliente?.telefone ?? "",
     observacao: cliente?.observacao ?? "",
   };

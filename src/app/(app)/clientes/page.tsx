@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { ChevronRight, Plus, Users } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatarTelefone } from "@/lib/telefone";
-import { estiloBotao, estiloCartao, estiloTitulo } from "@/components/estilos";
+import { estiloBotao, estiloTitulo } from "@/components/estilos";
 import { EstadoVazio } from "@/components/estado-vazio";
 import { Aviso } from "@/components/aviso";
+import { ListaClientes } from "./lista-clientes";
 
 export default async function PaginaClientes(props: PageProps<"/clientes">) {
   const { empresaId } = await exigirSessao();
@@ -35,20 +35,7 @@ export default async function PaginaClientes(props: PageProps<"/clientes">) {
           texto="Cadastre o nome e o WhatsApp de quem pede orçamento. Assim o orçamento vai direto para a conversa da pessoa."
         />
       ) : (
-        <ul className={`${estiloCartao} divide-y divide-gray-200`}>
-          {clientes.map((c) => (
-            <li key={c.id}>
-              <Link href={`/clientes/${c.id}`} className="flex min-h-16 items-center gap-3 px-4 py-3 hover:bg-gray-50">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-lg font-semibold">{c.nome}</p>
-                  {c.telefone && <p className="text-base text-gray-600">{formatarTelefone(c.telefone)}</p>}
-                  {c.observacao && <p className="truncate text-base text-gray-500">{c.observacao}</p>}
-                </div>
-                <ChevronRight className="size-5 shrink-0 text-gray-400" aria-hidden />
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <ListaClientes clientes={clientes} />
       )}
     </div>
   );
