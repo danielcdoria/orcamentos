@@ -223,7 +223,12 @@ cada registro. Por isso estas regras são tão importantes.
 
 ### Passo 5: o painel
 `/painel` mostra o **valor parado** (soma dos orçamentos enviados ou abertos, de qualquer mês),
-e os enviados, fechados e a taxa de fechamento **entre os enviados no mês atual**.
+e os enviados, fechados e a taxa de fechamento **entre os enviados no mês atual**. Embaixo:
+- **Funil de todos os tempos:** quantos orçamentos há em cada status (toque abre a lista filtrada).
+- **Qual abordagem dá mais resposta:** para "Mensagem antes", "Site pronto antes" e "Sem
+  abordagem", quantas **pousadas** (clientes, não orçamentos) foram abordadas (têm orçamento
+  fora de rascunho), quantas responderam (têm orçamento **agora** em Respondido ou Fechado) e a
+  taxa. Quem respondeu e depois virou Perdido não conta: o sistema não guarda histórico de status.
 
 ---
 
@@ -351,7 +356,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `cobrar/page.tsx` | **Cobrar hoje**, a tela principal do produto (passo 4). |
 | `cobrar/cartao-cobranca.tsx` | Um cartão por cliente com a mensagem pronta e os dois botões. |
 | `cobrar/actions.ts` | `registrarCobranca` e `marcarRespondido`. |
-| `painel/page.tsx` | Os quatro números (passo 5). |
+| `painel/page.tsx` | Os quatro números do mês, o funil por status e a comparação das abordagens (passo 5). |
 | `clientes/page.tsx` | Lista de clientes (busca os da empresa e entrega à lista abaixo). |
 | `clientes/lista-clientes.tsx` | A lista com busca instantânea no navegador (nome, cidade e telefone, sem acento), "3 de 120" e "Cadastrar “nome”" quando não acha. Embaixo do nome: cidade · abordagem · nota. À direita: ícones de WhatsApp e demo (fora do link da linha). |
 | `clientes/novo/page.tsx` | Novo cliente (com `?voltar=orcamento`, volta ao orçamento com o cliente escolhido; com `?nome=`, já abre com o nome preenchido). Manda ao formulário os clientes da empresa, para o aviso de repetido. |
