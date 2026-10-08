@@ -15,7 +15,9 @@
     "criar-empresa:producao": "DOTENV_CONFIG_PATH=.env.producao tsx --conditions=react-server scripts/criar-empresa.ts",
     "teste:isolamento": "tsx --conditions=react-server scripts/teste-isolamento.ts",
     "demo:marcenaria": "tsx --conditions=react-server scripts/demo-marcenaria.ts",
-    "demo:marcenaria:producao": "DOTENV_CONFIG_PATH=.env.producao tsx --conditions=react-server scripts/demo-marcenaria.ts"
+    "demo:marcenaria:producao": "DOTENV_CONFIG_PATH=.env.producao tsx --conditions=react-server scripts/demo-marcenaria.ts",
+    "preencher-envio": "tsx --conditions=react-server scripts/preencher-envio.ts",
+    "preencher-envio:producao": "DOTENV_CONFIG_PATH=.env.producao tsx --conditions=react-server scripts/preencher-envio.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

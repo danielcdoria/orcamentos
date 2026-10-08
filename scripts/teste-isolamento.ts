@@ -224,7 +224,13 @@ async function main() {
     let acao = await capturarAcao(page, () => page.select('select[aria-label="Status do orçamento"]', "fechado"));
     await repetirComOutroId(page, acao, A.rascunho.id, B.rascunho.id);
     let bOrc = await prisma.orcamento.findUniqueOrThrow({ where: { id: B.rascunho.id } });
-    registrar("A tenta mudar o status de um orçamento da B", bOrc.status === "rascunho", `status da B: ${bOrc.status}`);
+    registrar(
+      "A tenta mudar o status de um orçamento da B",
+      bOrc.status === "rascunho" && bOrc.enviadoEm === null, // a troca de status também preenche enviadoEm
+      `status da B: ${bOrc.status}, enviadoEm: ${bOrc.enviadoEm ? "preenchido" : "vazio"}`,
+    );
+    const aOrc = await prisma.orcamento.findUniqueOrThrow({ where: { id: A.rascunho.id } });
+    registrar("Trocar o status pela pílula grava a data de envio", aOrc.status === "fechado" && aOrc.enviadoEm !== null);
 
     // 3b) marcar como enviado (botão Enviar no WhatsApp)
     await page.goto(`${BASE}/orcamentos/${A.rascunho.id}`, { waitUntil: "networkidle0" });

@@ -28,6 +28,7 @@ cada uma com o seu login, e uma nunca vê os dados da outra.
 | `npm run criar-empresa` | O mesmo, no banco de testes. |
 | `npm run demo:producao` / `npm run demo` | Recria a "Oficina Silva" de demonstração (banco real / de testes). Só apaga a Oficina Silva. |
 | `npm run demo:marcenaria:producao` / `npm run demo:marcenaria` | Recria a "Madeira Nobre" (marcenaria de móveis sob medida e montagem) de demonstração. Só apaga a Madeira Nobre. |
+| `npm run preencher-envio:producao` | **Correção única** (out/2026): orçamentos marcados como Enviado pela pílula antes da correção ficaram sem data de envio e não entravam em "Cobrar hoje". Preenche com a data de criação. Sozinho, **só mostra** o que mudaria (e quais virariam Perdido pelo prazo); com `-- --gravar`, grava. `npm run preencher-envio` faz o mesmo no banco de testes. |
 | `npm run teste:isolamento` | **Teste de vazamento entre empresas** (com o `npm run dev` ligado). Rode sempre que mexer em telas ou ações. Tem que terminar com "Nenhum vazamento encontrado". |
 
 > ⚠️ `npm start` **não** é para o dia a dia: ele roda a última versão empacotada (antiga) e,
@@ -213,6 +214,9 @@ cada registro. Por isso estas regras são tão importantes.
    - "O cliente já respondeu" chama `marcarRespondido`, que tira o orçamento da fila.
 4. Trocar o status para respondido, fechado ou perdido (pílula de status na lista ou no
    orçamento) também tira da fila.
+5. Quem manda a mensagem por fora (sem o botão "Enviar no WhatsApp") e só troca a pílula para
+   **Enviado** também entra na fila: `alterarStatus` grava `enviadoEm` = agora ao mudar para
+   qualquer status depois de rascunho, **se ainda estiver vazio** (nunca sobrescreve).
 
 ### Passo 5: o painel
 `/painel` mostra o **valor parado** (soma dos orçamentos enviados ou abertos, de qualquer mês),
@@ -338,7 +342,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `orcamentos/novo/form-orcamento.tsx` | Montagem do orçamento com total ao vivo (passo 1): custo; "Opcional" (adicional) e "Dar opções ao cliente", que transforma o item num cartão de escolha onde se adicionam as outras opções (a marcada ● já vem escolhida). Se o item não está no catálogo, dá para usar o nome digitado e pôr o preço na hora. O cliente é escolhido pela busca (`BuscaCliente`), com "Trocar" e o aviso "já tem o orçamento nº X". |
 | `orcamentos/[id]/page.tsx` | Um orçamento: total, escolha do cliente (e o sinal "mexeu nas opções"), margem, envio, "Ver como o cliente vê", PDF, itens (por grupo), observação e histórico. |
 | `orcamentos/[id]/botoes-envio.tsx` | "Enviar no WhatsApp" e "Copiar link do orçamento". |
-| `orcamentos/actions.ts` | `salvarOrcamento`, `marcarEnviado`, `alterarStatus`. |
+| `orcamentos/actions.ts` | `salvarOrcamento`, `marcarEnviado`, `alterarStatus` (que também grava a data de envio, se estiver vazia). |
 | `cobrar/page.tsx` | **Cobrar hoje**, a tela principal do produto (passo 4). |
 | `cobrar/cartao-cobranca.tsx` | Um cartão por cliente com a mensagem pronta e os dois botões. |
 | `cobrar/actions.ts` | `registrarCobranca` e `marcarRespondido`. |
@@ -388,6 +392,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `demo-oficina.ts` | Dados da Oficina Silva: 12 clientes, 25 itens, 18 orçamentos (`npm run demo` / `:producao`). |
 | `demo-marcenaria.ts` | Dados da Madeira Nobre, marcenaria de móveis sob medida e montagem: 12 clientes, 30 itens, 18 orçamentos, um deles com opções (Thiago: o cliente escolhe o material) (`npm run demo:marcenaria` / `:producao`). Login `demo@madeiranobre.com.br`. |
 | `demo/logo-oficina-silva.png`, `demo/logo-madeira-nobre.png` | Logos das empresas de demonstração. |
+| `preencher-envio.ts` | Correção única: dá data de envio (= data de criação) aos orçamentos Enviados sem ela. Modo teste por padrão; `--gravar` grava. Ver seção 1. |
 | `teste-isolamento.ts` | Teste de vazamento: cria as empresas de teste A e B e, logada como A, tenta abrir, listar e alterar dados da B (repetindo chamadas reais trocando o código do registro). Confere no banco que nada da B mudou. Inclui as buscas da lista de orçamentos (por nome e por número, que as duas empresas têm). Também confere que o **custo** não aparece na página pública nem no PDF (com e sem opções), e ataca a escolha de opções (itens de outro orçamento, escolha inválida, prévia do dono, orçamento fechado). Apaga as empresas de teste no fim. Usa `puppeteer-core` e o Google Chrome. |
 
 ---

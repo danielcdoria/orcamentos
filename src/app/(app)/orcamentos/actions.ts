@@ -190,10 +190,23 @@ export async function marcarEnviado(orcamentoId: string) {
 }
 
 // Troca manual de status (botões rápidos da lista e da tela do orçamento).
+// Quem manda a mensagem por fora e só troca a pílula para "Enviado" (ou já para um status
+// depois dele) também precisa de enviadoEm, senão a cobrança nunca conta os dias.
+// Só preenche se estiver vazio: o primeiro envio nunca é sobrescrito.
 export async function alterarStatus(orcamentoId: string, status: StatusOrcamento) {
   const { empresaId } = await exigirSessao();
   if (!LISTA_STATUS.includes(status)) return; // valor inventado: ignora
-  await prisma.orcamento.updateMany({ where: { id: orcamentoId, empresaId }, data: { status } });
+  await prisma.$transaction([
+    prisma.orcamento.updateMany({ where: { id: orcamentoId, empresaId }, data: { status } }),
+    ...(status !== "rascunho"
+      ? [
+          prisma.orcamento.updateMany({
+            where: { id: orcamentoId, empresaId, enviadoEm: null },
+            data: { enviadoEm: new Date() },
+          }),
+        ]
+      : []),
+  ]);
   revalidatePath("/orcamentos");
   revalidatePath(`/orcamentos/${orcamentoId}`);
 }
