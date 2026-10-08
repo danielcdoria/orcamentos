@@ -12,7 +12,18 @@ export default async function EditarCliente(props: PageProps<"/clientes/[id]">) 
   // findFirst com empresaId: um cliente de outra empresa simplesmente "não existe" aqui.
   const cliente = await prisma.cliente.findFirst({
     where: { id, empresaId },
-    select: { id: true, nome: true, telefone: true, observacao: true },
+    select: {
+      id: true,
+      nome: true,
+      telefone: true,
+      observacao: true,
+      cidade: true,
+      abordagem: true,
+      linkDemo: true,
+      instagram: true,
+      notaGoogle: true,
+      avaliacoesGoogle: true,
+    },
   });
   if (!cliente) notFound();
 

@@ -30,7 +30,7 @@ import {
   estiloRotulo,
 } from "@/components/estilos";
 
-type Cliente = { id: string; nome: string; telefone: string | null };
+type Cliente = { id: string; nome: string; telefone: string | null; cidade: string | null };
 type Existente = { numero: number; status: StatusOrcamento };
 type ItemCatalogo = { id: string; descricao: string; preco: number; unidade: string; custo: number | null };
 

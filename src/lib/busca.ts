@@ -19,15 +19,16 @@ export function textoBate(texto: string | null | undefined, busca: string): bool
     .every((palavra) => alvo.includes(palavra));
 }
 
-// O cliente bate com o que foi digitado? Procura no nome (sem acento) e, se a busca
-// tiver números, nos dígitos do telefone: "99988" acha "(21) 99988-7766".
+// O cliente bate com o que foi digitado? Procura no nome e na cidade (sem acento; dá para
+// misturar: "matitatere lumiar") e, se a busca tiver números, nos dígitos do telefone:
+// "99988" acha "(21) 99988-7766".
 export function clienteBate(
-  cliente: { nome: string; telefone?: string | null },
+  cliente: { nome: string; telefone?: string | null; cidade?: string | null },
   busca: string,
 ): boolean {
   const termo = normalizar(busca);
   if (!termo) return true;
-  if (textoBate(cliente.nome, termo)) return true;
+  if (textoBate(`${cliente.nome} ${cliente.cidade ?? ""}`, termo)) return true;
 
   const digitos = busca.replace(/\D/g, "");
   // Só compara telefone se a busca for basicamente um número (evita "Pousada 2" bater por "2")

@@ -29,6 +29,7 @@ cada uma com o seu login, e uma nunca vê os dados da outra.
 | `npm run demo:producao` / `npm run demo` | Recria a "Oficina Silva" de demonstração (banco real / de testes). Só apaga a Oficina Silva. |
 | `npm run demo:marcenaria:producao` / `npm run demo:marcenaria` | Recria a "Madeira Nobre" (marcenaria de móveis sob medida e montagem) de demonstração. Só apaga a Madeira Nobre. |
 | `npm run preencher-envio:producao` | **Correção única** (out/2026): orçamentos marcados como Enviado pela pílula antes da correção ficaram sem data de envio e não entravam em "Cobrar hoje". Preenche com a data de criação. Sozinho, **só mostra** o que mudaria (e quais virariam Perdido pelo prazo); com `-- --gravar`, grava. `npm run preencher-envio` faz o mesmo no banco de testes. |
+| `npm run migrar-abordagem:producao` | **Correção única** (out/2026): onde a Observação do cliente é "Mensagem antes" ou "Site pronto antes" (sem ligar para maiúsculas), grava no campo novo **Abordagem** e apaga a observação. Outros textos ficam. Sozinho, **só mostra**; com `-- --gravar`, grava. `npm run migrar-abordagem` faz o mesmo no banco de testes. |
 | `npm run teste:isolamento` | **Teste de vazamento entre empresas** (com o `npm run dev` ligado). Rode sempre que mexer em telas ou ações. Tem que terminar com "Nenhum vazamento encontrado". |
 
 > ⚠️ `npm start` **não** é para o dia a dia: ele roda a última versão empacotada (antiga) e,
@@ -232,7 +233,7 @@ e os enviados, fechados e a taxa de fechamento **entre os enviados no mês atual
 | `EmpresaLogo` | A imagem do logo (PNG/JPG), separada para não pesar nas outras consultas. |
 | `Usuario` | O login da empresa (um por empresa): email, hash da senha, contador de tentativas erradas e bloqueio. |
 | `Sessao` | Cada login aberto (um celular, um computador). Guarda o hash do código do cookie. Dura 30 dias. |
-| `Cliente` | Os clientes da empresa: nome, telefone, observação. |
+| `Cliente` | Os clientes da empresa: nome, telefone, observação e os dados de **prospecção** (todos opcionais): cidade, abordagem (`mensagem` = "Mensagem antes" ou `demo` = "Site pronto antes"), link da demonstração (sempre http/https), Instagram, nota e número de avaliações no Google. |
 | `Item` | O catálogo: descrição, preço (centavos), unidade e **custo padrão** (opcional, interno). |
 | `Orcamento` | Número, cliente, total (centavos; soma dos itens **incluídos**, muda quando o cliente troca uma opção), observação, validade, status, token do link, datas de envio/abertura, vezes aberto. |
 | `OrcamentoItem` | As linhas do orçamento: cópia da descrição e do preço, quantidade (aceita 2,5), subtotal, **custo por unidade** (opcional, interno: nunca vai para o cliente) e as opções: `tipo` (fixo, opcao, adicional), `grupo`, `padrao` e `incluido` (está no total agora). Orçamentos antigos: tudo fixo e incluído. |
@@ -297,7 +298,8 @@ Pastas geradas (fora do git, não se edita): `node_modules/` (bibliotecas, recri
 | `opcoes.ts` | **Opções que o cliente escolhe**: separa fixos, grupos e adicionais, define a padrão de cada grupo, soma o total e escreve o resumo ("Material: MDF comum · + LED"). Roda no servidor e no navegador. |
 | `publico.ts` | **O que pode ir para o cliente final**: os únicos campos que a página pública e o PDF pedem ao banco. O custo não está aqui, por isso nem sai do banco nesses caminhos. |
 | `mes.ts` | Início, fim e nome do mês atual em Brasília (para o painel). |
-| `busca.ts` | **Busca sem acento**: `normalizar` ("Matitaterê" → "matitatere"), `textoBate` (todas as palavras aparecem, em qualquer ordem) e `clienteBate` (nome, ou os dígitos do telefone). Usada nas listas e no novo orçamento; roda no servidor e no navegador. |
+| `busca.ts` | **Busca sem acento**: `normalizar` ("Matitaterê" → "matitatere"), `textoBate` (todas as palavras aparecem, em qualquer ordem) e `clienteBate` (nome + cidade, ou os dígitos do telefone). Usada nas listas e no novo orçamento; roda no servidor e no navegador. |
+| `prospeccao.ts` | Nomes das abordagens ("Mensagem antes", "Site pronto antes"), leitura da nota ("4,5"), das avaliações ("1.234") e do link da demo (põe `https://`, recusa o que não for http/https) e o resumo da lista ("Lumiar · Mensagem antes · 4,5 ★"). |
 | `url.ts` | `urlBase()`: endereço do site para montar links. No `npm run dev`, troca `localhost` pelo IP do Mac na rede. |
 
 ### Componentes compartilhados (`src/components/`)
@@ -348,11 +350,11 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `cobrar/actions.ts` | `registrarCobranca` e `marcarRespondido`. |
 | `painel/page.tsx` | Os quatro números (passo 5). |
 | `clientes/page.tsx` | Lista de clientes (busca os da empresa e entrega à lista abaixo). |
-| `clientes/lista-clientes.tsx` | A lista com busca instantânea no navegador (nome e telefone, sem acento), "3 de 120" e "Cadastrar “nome”" quando não acha. |
+| `clientes/lista-clientes.tsx` | A lista com busca instantânea no navegador (nome, cidade e telefone, sem acento), "3 de 120" e "Cadastrar “nome”" quando não acha. Embaixo do nome: cidade · abordagem · nota. |
 | `clientes/novo/page.tsx` | Novo cliente (com `?voltar=orcamento`, volta ao orçamento com o cliente escolhido; com `?nome=`, já abre com o nome preenchido). |
 | `clientes/[id]/page.tsx` | Editar cliente. |
-| `clientes/form-cliente.tsx` | Formulário de cliente (nome, WhatsApp, observação). |
-| `clientes/actions.ts` | `salvarCliente`. |
+| `clientes/form-cliente.tsx` | Formulário de cliente: nome, WhatsApp, seção **Prospecção** (cidade, abordagem em dois botões, link da demo, Instagram, nota e avaliações no Google) e observação. |
+| `clientes/actions.ts` | `salvarCliente` (valida também os campos de prospecção). |
 | `catalogo/page.tsx` | Catálogo com busca (`/catalogo?busca=oleo`). |
 | `catalogo/novo/page.tsx` | Novo item. |
 | `catalogo/[id]/page.tsx` | Editar item (com Apagar). |
@@ -393,6 +395,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `demo-marcenaria.ts` | Dados da Madeira Nobre, marcenaria de móveis sob medida e montagem: 12 clientes, 30 itens, 18 orçamentos, um deles com opções (Thiago: o cliente escolhe o material) (`npm run demo:marcenaria` / `:producao`). Login `demo@madeiranobre.com.br`. |
 | `demo/logo-oficina-silva.png`, `demo/logo-madeira-nobre.png` | Logos das empresas de demonstração. |
 | `preencher-envio.ts` | Correção única: dá data de envio (= data de criação) aos orçamentos Enviados sem ela. Modo teste por padrão; `--gravar` grava. Ver seção 1. |
+| `migrar-abordagem.ts` | Correção única: passa "Mensagem antes" / "Site pronto antes" da Observação para o campo Abordagem. Modo teste por padrão; `--gravar` grava. Não mexe em quem já tem outra abordagem (só avisa). Ver seção 1. |
 | `teste-isolamento.ts` | Teste de vazamento: cria as empresas de teste A e B e, logada como A, tenta abrir, listar e alterar dados da B (repetindo chamadas reais trocando o código do registro). Confere no banco que nada da B mudou. Inclui as buscas da lista de orçamentos (por nome e por número, que as duas empresas têm). Também confere que o **custo** não aparece na página pública nem no PDF (com e sem opções), e ataca a escolha de opções (itens de outro orçamento, escolha inválida, prévia do dono, orçamento fechado). Apaga as empresas de teste no fim. Usa `puppeteer-core` e o Google Chrome. |
 
 ---
@@ -410,6 +413,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | Mudar o que conta como "cliente abriu" | `src/lib/abertura.ts` |
 | Mudar a página que o cliente vê | `src/app/orcamento/[token]/page.tsx` (e o PDF em `pdf/documento-pdf.tsx`, para ficarem iguais) |
 | Adicionar um campo ao orçamento | `schema.prisma` + migration → `orcamentos/actions.ts` → `form-orcamento.tsx` → telas `orcamentos/[id]`, página pública e PDF |
+| Adicionar um campo ao cliente | `schema.prisma` + migration → `clientes/actions.ts` (ler e validar) → `form-cliente.tsx` → `clientes/[id]/page.tsx` (o `select`) |
 | Adicionar um status | `enum StatusOrcamento` no schema (+ migration) e `src/lib/status.ts` |
 | Adicionar um aviso de "salvo" | `MENSAGENS` em `src/components/aviso.tsx` e `redirect("...?ok=codigo")` na ação |
 

@@ -17,7 +17,9 @@
     "demo:marcenaria": "tsx --conditions=react-server scripts/demo-marcenaria.ts",
     "demo:marcenaria:producao": "DOTENV_CONFIG_PATH=.env.producao tsx --conditions=react-server scripts/demo-marcenaria.ts",
     "preencher-envio": "tsx --conditions=react-server scripts/preencher-envio.ts",
-    "preencher-envio:producao": "DOTENV_CONFIG_PATH=.env.producao tsx --conditions=react-server scripts/preencher-envio.ts"
+    "preencher-envio:producao": "DOTENV_CONFIG_PATH=.env.producao tsx --conditions=react-server scripts/preencher-envio.ts",
+    "migrar-abordagem": "tsx --conditions=react-server scripts/migrar-abordagem.ts",
+    "migrar-abordagem:producao": "DOTENV_CONFIG_PATH=.env.producao tsx --conditions=react-server scripts/migrar-abordagem.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

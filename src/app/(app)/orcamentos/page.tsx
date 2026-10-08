@@ -60,7 +60,7 @@ export default async function PaginaOrcamentos(props: PageProps<"/orcamentos">) 
   if (normalizar(busca)) {
     const clientes = await prisma.cliente.findMany({
       where: { empresaId },
-      select: { id: true, nome: true, telefone: true },
+      select: { id: true, nome: true, telefone: true, cidade: true },
     });
     const ids = clientes.filter((c) => clienteBate(c, busca)).map((c) => c.id);
     const numeroDigitado = busca.replace(/^(n[º°o.]?|#)\s*/i, ""); // aceita "12", "nº 12", "#12"

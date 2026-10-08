@@ -14,7 +14,15 @@ export default async function PaginaClientes(props: PageProps<"/clientes">) {
   const clientes = await prisma.cliente.findMany({
     where: { empresaId },
     orderBy: { nome: "asc" },
-    select: { id: true, nome: true, telefone: true, observacao: true },
+    select: {
+      id: true,
+      nome: true,
+      telefone: true,
+      observacao: true,
+      cidade: true,
+      abordagem: true,
+      notaGoogle: true,
+    },
   });
 
   return (

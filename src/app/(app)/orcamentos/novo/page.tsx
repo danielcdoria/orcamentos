@@ -17,7 +17,7 @@ export default async function NovoOrcamento(props: PageProps<"/orcamentos/novo">
     prisma.cliente.findMany({
       where: { empresaId },
       orderBy: { nome: "asc" },
-      select: { id: true, nome: true, telefone: true },
+      select: { id: true, nome: true, telefone: true, cidade: true },
     }),
     prisma.item.findMany({
       where: { empresaId },

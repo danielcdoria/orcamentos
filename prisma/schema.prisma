@@ -104,10 +104,24 @@ model Cliente {
   observacao String?
   criadoEm   DateTime @default(now())
 
+  // Prospecção (todos opcionais): de onde é, como foi abordado e o que se sabe dele.
+  cidade           String? // ex.: "Lumiar"
+  abordagem        Abordagem? // como foi o primeiro contato (para comparar o que funciona melhor)
+  linkDemo         String? // site de demonstração feito para ele (sempre http/https)
+  instagram        String? // o @ ou o link, como foi digitado
+  notaGoogle       Float? // nota no Google, de 0 a 5 (ex.: 4.5). Não é dinheiro, então Float serve
+  avaliacoesGoogle Int? // quantas avaliações no Google (ex.: 562)
+
   empresa    Empresa     @relation(fields: [empresaId], references: [id])
   orcamentos Orcamento[]
 
   @@index([empresaId, nome])
+}
+
+// Como foi o primeiro contato com o cliente (prospecção).
+enum Abordagem {
+  mensagem // "Mensagem antes": só a mensagem, com um site de exemplo
+  demo // "Site pronto antes": já mandou a demonstração pronta
 }
 
 // Item do catálogo: o que a empresa costuma vender (produto ou serviço).
