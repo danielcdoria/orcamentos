@@ -115,6 +115,8 @@ export async function salvarCobranca(_estado: EstadoForm, formData: FormData): P
   const valores: Record<string, string> = {
     prazoCobranca1: texto("prazoCobranca1"),
     prazoPerdido: texto("prazoPerdido"),
+    retomarLigado: texto("retomarLigado") === "sim" ? "sim" : "",
+    diasRetomar: texto("diasRetomar") || "3",
   };
   const falhar = (erro: string): EstadoForm => ({ erro, valores });
 
@@ -123,12 +125,18 @@ export async function salvarCobranca(_estado: EstadoForm, formData: FormData): P
   if (![p1, perdido].every((n) => Number.isInteger(n) && n >= 1 && n <= 90)) {
     return falhar("Os dias precisam ser números entre 1 e 90.");
   }
+  // Retomar conversa: desligado grava vazio (null)
+  const diasRetomar = valores.retomarLigado ? Number(valores.diasRetomar) : null;
+  if (diasRetomar !== null && !(Number.isInteger(diasRetomar) && diasRetomar >= 1 && diasRetomar <= 90)) {
+    return falhar("Os dias para retomar precisam ser um número entre 1 e 90.");
+  }
 
   await prisma.empresa.update({
     where: { id: empresaId },
     data: {
       prazoCobranca1: p1,
       prazoPerdido: perdido,
+      diasRetomar,
     },
   });
 

@@ -1,76 +1,48 @@
 "use client";
 
-// A lista de "Cobrar hoje". Guarda os cartões concluídos nesta visita: quando o servidor
-// atualiza a fila, eles já saíram dela, mas a linha verde (com o "Desfazer") continua na tela,
-// no mesmo lugar. Ao desfazer, o cartão volta.
+// A lista de cobranças de "Cobrar hoje". A linha verde com "Desfazer" fica no lugar do cartão
+// mesmo depois que o servidor tira o orçamento da fila (ver lista-com-desfazer.ts).
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import type { ItemFila } from "@/lib/cobranca";
 import { desfazerCobranca, marcarRespondido, registrarCobranca } from "./actions";
 import { CartaoCobranca, LinhaConcluida } from "./cartao-cobranca";
-
-type Concluido = {
-  item: ItemFila;
-  posicao: number; // onde o cartão estava, para a linha verde ficar no mesmo lugar
-  tipo: "cobrado" | "respondido" | "voltando"; // voltando = desfeito, esperando a fila atualizar
-  cobrancaId?: string | null;
-};
-
-const chave = (i: ItemFila) => i.orcamentoId;
+import { useListaComDesfazer } from "./lista-com-desfazer";
 
 export function ListaCobranca({ fila }: { fila: ItemFila[] }) {
-  const [concluidos, setConcluidos] = useState<Record<string, Concluido>>({});
+  const { linhas, concluir, permitirDesfazer, voltar } = useListaComDesfazer(fila, (i) => i.orcamentoId);
   const [, iniciar] = useTransition();
 
-  function marcar(k: string, mudanca: Partial<Concluido> & Pick<Concluido, "item" | "posicao" | "tipo">) {
-    setConcluidos((atual) => ({ ...atual, [k]: { ...atual[k], ...mudanca } }));
-  }
-
   function cobrar(item: ItemFila, posicao: number) {
-    const k = chave(item);
-    marcar(k, { item, posicao, tipo: "cobrado", cobrancaId: undefined });
+    concluir(item, posicao, `${item.cliente}: cobrança registrada ✓`);
     iniciar(async () => {
       const id = await registrarCobranca(item.orcamentoId);
-      setConcluidos((atual) => (atual[k] ? { ...atual, [k]: { ...atual[k], cobrancaId: id } } : atual));
+      if (id) {
+        permitirDesfazer(item, () => {
+          voltar(item);
+          iniciar(() => desfazerCobranca(id));
+        });
+      }
     });
   }
 
   function responder(item: ItemFila, posicao: number) {
-    marcar(chave(item), { item, posicao, tipo: "respondido" });
+    concluir(item, posicao, `${item.cliente}: marcado como respondido ✓`);
     iniciar(() => marcarRespondido(item.orcamentoId));
   }
 
-  function desfazer(c: Concluido) {
-    if (!c.cobrancaId) return;
-    const id = c.cobrancaId;
-    marcar(chave(c.item), { ...c, tipo: "voltando", cobrancaId: undefined });
-    iniciar(() => desfazerCobranca(id));
+  if (linhas.length === 0) {
+    return <p className="rounded-2xl bg-green-50 px-5 py-4 text-base text-green-800">Nenhuma cobrança para hoje ✓</p>;
   }
-
-  // Monta a tela: a fila atual + os concluídos que já saíram dela, cada um na posição em que estava.
-  const naFila = new Set(fila.map(chave));
-  const linhas: { item: ItemFila; concluido?: Concluido }[] = fila.map((item) => {
-    const c = concluidos[chave(item)];
-    return { item, concluido: c && c.tipo !== "voltando" ? c : undefined };
-  });
-  Object.values(concluidos)
-    .filter((c) => !naFila.has(chave(c.item)))
-    .sort((a, b) => a.posicao - b.posicao)
-    .forEach((c) => linhas.splice(Math.min(c.posicao, linhas.length), 0, { item: c.item, concluido: c }));
 
   return (
     <ul className="flex flex-col gap-4">
       {linhas.map(({ item, concluido }, posicao) =>
-        concluido && concluido.tipo !== "voltando" ? (
-          <LinhaConcluida
-            key={chave(item)}
-            item={item}
-            tipo={concluido.tipo}
-            aoDesfazer={concluido.cobrancaId ? () => desfazer(concluido) : undefined}
-          />
+        concluido ? (
+          <LinhaConcluida key={item.orcamentoId} texto={concluido.texto} aoDesfazer={concluido.desfazer} />
         ) : (
           <CartaoCobranca
-            key={chave(item)}
+            key={item.orcamentoId}
             item={item}
             aoCobrar={() => cobrar(item, posicao)}
             aoResponder={() => responder(item, posicao)}

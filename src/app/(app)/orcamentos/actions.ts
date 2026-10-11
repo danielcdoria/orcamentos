@@ -187,7 +187,7 @@ export async function marcarEnviado(orcamentoId: string) {
     }),
     prisma.orcamento.updateMany({
       where: { id: orcamentoId, empresaId, status: "rascunho" },
-      data: { status: "enviado" },
+      data: { status: "enviado", statusAlteradoEm: new Date() },
     }),
   ]);
   revalidatePath("/orcamentos");
@@ -202,7 +202,11 @@ export async function alterarStatus(orcamentoId: string, status: StatusOrcamento
   const { empresaId } = await exigirSessao();
   if (!LISTA_STATUS.includes(status)) return; // valor inventado: ignora
   await prisma.$transaction([
-    prisma.orcamento.updateMany({ where: { id: orcamentoId, empresaId }, data: { status } }),
+    // statusAlteradoEm: é dela que "Retomar conversa" conta os dias de quem respondeu
+    prisma.orcamento.updateMany({
+      where: { id: orcamentoId, empresaId },
+      data: { status, statusAlteradoEm: new Date() },
+    }),
     ...(status !== "rascunho"
       ? [
           prisma.orcamento.updateMany({
@@ -214,4 +218,5 @@ export async function alterarStatus(orcamentoId: string, status: StatusOrcamento
   ]);
   revalidatePath("/orcamentos");
   revalidatePath(`/orcamentos/${orcamentoId}`);
+  revalidatePath("/cobrar"); // "Mudar status" em Retomar conversa tira o cartão da lista
 }

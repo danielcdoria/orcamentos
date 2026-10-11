@@ -72,16 +72,15 @@ export function CartaoCobranca({
   );
 }
 
-// A linha verde depois de "Já cobrei" / "O cliente já respondeu". Depois do "Já cobrei", mostra
-// "Desfazer" por alguns segundos (para quando se toca na pousada errada).
+// A linha verde depois de concluir um cartão ("Já cobrei", "Já retomei", "O cliente já
+// respondeu"...). Quando dá para desfazer, mostra "Desfazer" por alguns segundos (para quando
+// se toca na pousada errada). Usada pelas duas seções de "Cobrar hoje".
 export function LinhaConcluida({
-  item,
-  tipo,
+  texto,
   aoDesfazer,
 }: {
-  item: ItemFila;
-  tipo: "cobrado" | "respondido";
-  aoDesfazer?: () => void; // só existe depois que o servidor confirmou a cobrança
+  texto: string;
+  aoDesfazer?: () => void; // só existe depois que o servidor confirmou
 }) {
   const [podeDesfazer, setPodeDesfazer] = useState(true);
   useEffect(() => {
@@ -94,10 +93,8 @@ export function LinhaConcluida({
       role="status"
       className="flex min-h-14 items-center justify-between gap-3 rounded-2xl bg-green-50 px-5 py-3 text-base text-green-800"
     >
-      <span>
-        {item.cliente}: {tipo === "cobrado" ? "cobrança registrada ✓" : "marcado como respondido ✓"}
-      </span>
-      {tipo === "cobrado" && podeDesfazer && aoDesfazer && (
+      <span>{texto}</span>
+      {podeDesfazer && aoDesfazer && (
         <button
           type="button"
           onClick={aoDesfazer}

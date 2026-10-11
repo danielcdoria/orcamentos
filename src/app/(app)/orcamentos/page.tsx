@@ -4,7 +4,7 @@ import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatarCentavos } from "@/lib/dinheiro";
 import { formatarData } from "@/lib/formatos";
-import { contarFila } from "@/lib/cobranca";
+import { contarPendencias } from "@/lib/retomar";
 import { clienteBate, normalizar } from "@/lib/busca";
 import { LISTA_STATUS, STATUS } from "@/lib/status";
 import type { Prisma } from "@/generated/prisma/client";
@@ -51,8 +51,8 @@ export default async function PaginaOrcamentos(props: PageProps<"/orcamentos">) 
   const limite = Number.isInteger(limiteLido) && limiteLido > POR_PAGINA ? Math.min(limiteLido, 5000) : POR_PAGINA;
 
   // Conta ANTES de buscar a lista: a contagem também marca como perdido quem passou
-  // do prazo, e assim a lista já aparece com o status certo.
-  const paraCobrar = await contarFila(empresaId);
+  // do prazo, e assim a lista já aparece com o status certo. (Mesma conta da bolinha.)
+  const paraCobrar = await contarPendencias(empresaId);
 
   // Busca pelo nome do cliente (sem acento: o banco não sabe ignorar acentos, então a
   // comparação é feita aqui, só entre os clientes DESTA empresa) ou pelo número do orçamento.
@@ -112,8 +112,8 @@ export default async function PaginaOrcamentos(props: PageProps<"/orcamentos">) 
           <BellRing className="size-5 shrink-0" aria-hidden />
           <span className="flex-1">
             {paraCobrar === 1
-              ? "1 cliente esperando cobrança hoje"
-              : `${paraCobrar} clientes esperando cobrança hoje`}
+              ? "1 cliente para cobrar ou retomar hoje"
+              : `${paraCobrar} clientes para cobrar ou retomar hoje`}
           </span>
           <ChevronRight className="size-5 shrink-0" aria-hidden />
         </Link>

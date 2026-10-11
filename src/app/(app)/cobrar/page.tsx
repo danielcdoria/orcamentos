@@ -1,16 +1,16 @@
-import { CircleCheck } from "lucide-react";
 import { exigirSessao } from "@/lib/auth";
 import { buscarFila } from "@/lib/cobranca";
+import { buscarRetomar } from "@/lib/retomar";
 import { estiloTitulo } from "@/components/estilos";
-import { EstadoVazio } from "@/components/estado-vazio";
-import { ListaCobranca } from "./lista-cobranca";
+import { TelaCobrar } from "./tela-cobrar";
 
 // COBRAR HOJE: a tela principal do produto.
 // Mostra quem precisa ser cobrado hoje. A pessoa escreve a mensagem no WhatsApp (cada
-// conversa é diferente) e toca em "Já cobrei". O sistema NUNCA envia nada sozinho.
+// conversa é diferente) e toca em "Já cobrei". Embaixo, "Retomar conversa": quem respondeu
+// e esfriou (src/lib/retomar.ts). O sistema NUNCA envia nada sozinho.
 export default async function CobrarHoje() {
   const { empresaId } = await exigirSessao();
-  const fila = await buscarFila(empresaId);
+  const [fila, retomar] = await Promise.all([buscarFila(empresaId), buscarRetomar(empresaId)]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -25,17 +25,7 @@ export default async function CobrarHoje() {
         )}
       </div>
 
-      {fila.length === 0 ? (
-        <EstadoVazio
-          icone={CircleCheck}
-          titulo="Tudo em dia"
-          texto="Ninguém para cobrar hoje. Quando um cliente ficar sem responder um orçamento, ele aparece aqui no dia certo."
-          botao="Ver orçamentos"
-          href="/orcamentos"
-        />
-      ) : (
-        <ListaCobranca fila={fila} />
-      )}
+      <TelaCobrar fila={fila} retomar={retomar} />
     </div>
   );
 }

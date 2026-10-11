@@ -44,6 +44,8 @@ export default async function PaginaConfiguracoes() {
           cobranca={{
             prazoCobranca1: String(empresa.prazoCobranca1),
             prazoPerdido: String(empresa.prazoPerdido),
+            retomarLigado: empresa.diasRetomar === null ? "" : "sim",
+            diasRetomar: String(empresa.diasRetomar ?? 3),
           }}
         />
       </section>

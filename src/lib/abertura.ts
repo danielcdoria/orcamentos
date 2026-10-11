@@ -66,7 +66,7 @@ export async function registrarAbertura(orcamentoId: string) {
     //    respondido, fechado ou perdido)
     prisma.orcamento.updateMany({
       where: { id: orcamentoId, status: { in: ["rascunho", "enviado"] } },
-      data: { status: "aberto" },
+      data: { status: "aberto", statusAlteradoEm: agora },
     }),
   ]);
 }

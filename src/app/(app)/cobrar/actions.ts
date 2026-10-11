@@ -66,7 +66,52 @@ export async function marcarRespondido(orcamentoId: string) {
   const { empresaId } = await exigirSessao();
   await prisma.orcamento.updateMany({
     where: { id: orcamentoId, empresaId },
-    data: { status: "respondido" },
+    data: { status: "respondido", statusAlteradoEm: new Date() },
+  });
+  atualizarTelas(orcamentoId);
+}
+
+// "Já retomei" (seção Retomar conversa): a pessoa voltou a falar com quem tinha respondido e
+// esfriou. Grava retomadoEm = agora; o orçamento some da lista até passarem mais X dias.
+// Devolve a data anterior (texto ISO ou null), para o "Desfazer" poder voltar a ela.
+export async function registrarRetomada(orcamentoId: string): Promise<{ anterior: string | null } | null> {
+  const { empresaId } = await exigirSessao();
+  const orcamento = await prisma.orcamento.findFirst({
+    where: { id: orcamentoId, empresaId, status: "respondido" },
+    select: { retomadoEm: true },
+  });
+  if (!orcamento) return null;
+
+  await prisma.orcamento.updateMany({
+    where: { id: orcamentoId, empresaId, status: "respondido" },
+    data: { retomadoEm: new Date() },
+  });
+  atualizarTelas(orcamentoId);
+  return { anterior: orcamento.retomadoEm?.toISOString() ?? null };
+}
+
+// "Desfazer" logo depois do "Já retomei": volta retomadoEm para a data anterior. Só vale para
+// orçamento desta empresa, retomado há menos de 10 minutos, e com uma data anterior mais
+// antiga que a atual (ninguém consegue "empurrar" a data para frente por aqui).
+export async function desfazerRetomada(orcamentoId: string, anterior: string | null) {
+  const { empresaId } = await exigirSessao();
+  const dataAnterior = anterior === null ? null : new Date(anterior);
+  if (dataAnterior !== null && Number.isNaN(dataAnterior.getTime())) return;
+
+  const orcamento = await prisma.orcamento.findFirst({
+    where: {
+      id: orcamentoId,
+      empresaId,
+      retomadoEm: { gte: new Date(Date.now() - JANELA_DESFAZER_MS) },
+    },
+    select: { retomadoEm: true },
+  });
+  if (!orcamento?.retomadoEm) return;
+  if (dataAnterior !== null && dataAnterior >= orcamento.retomadoEm) return;
+
+  await prisma.orcamento.updateMany({
+    where: { id: orcamentoId, empresaId, retomadoEm: orcamento.retomadoEm },
+    data: { retomadoEm: dataAnterior },
   });
   atualizarTelas(orcamentoId);
 }

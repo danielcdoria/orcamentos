@@ -37,6 +37,10 @@ model Empresa {
   prazoCobranca2 Int @default(7) // NÃO USADO (era a 2ª cobrança); fica no banco
   prazoPerdido   Int @default(15) // dias depois da COBRANÇA sem resposta: vira perdido
 
+  // RETOMAR CONVERSA: Respondido parado há X dias aparece em "Cobrar hoje" (ver src/lib/retomar.ts).
+  // Vazio (null) = desligado.
+  diasRetomar Int? @default(3)
+
   // Modelos das mensagens de cobrança: diferentes para quem abriu e quem não abriu o link.
   msgCobranca1NaoAbriu String @default("Oi, {nome}! Tudo bem? Te mandei o orçamento da {empresa} há uns dias, mas acho que acabou se perdendo aí no meio das mensagens. Vou deixar o link de novo aqui: {link}")
   msgCobranca1Abriu    String @default("Oi, {nome}! Tudo certo? Vi que você deu uma olhada no orçamento. Ficou alguma dúvida ou quer ajustar alguma coisa? É só me falar que a gente acerta 🙂")
@@ -166,6 +170,11 @@ model Orcamento {
   status     StatusOrcamento @default(rascunho)
   criadoEm   DateTime        @default(now())
   enviadoEm  DateTime? // PRIMEIRO envio; é daqui que a regra de cobrança conta os dias
+
+  // Última troca de status (toda ação que muda o status grava). Orçamentos que já existiam
+  // ganharam a data da migração (out/2026), para não aparecerem todos em "Retomar conversa".
+  statusAlteradoEm DateTime  @default(now())
+  retomadoEm       DateTime? // último "Já retomei" na seção Retomar conversa
 
   // Código secreto do link público (/orcamento/<token>). O próprio banco sorteia
   // 64 caracteres aleatórios; é impossível adivinhar o link de outro orçamento.

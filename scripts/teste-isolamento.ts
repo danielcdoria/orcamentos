@@ -112,6 +112,20 @@ async function criarEmpresa(letra: "A" | "B") {
     include: { itens: { orderBy: { id: "asc" } } },
   });
 
+  // Respondido há 5 dias: aparece em "Retomar conversa" (padrão: 3 dias)
+  const respondido = await prisma.orcamento.create({
+    data: {
+      empresaId: e.id,
+      clienteId: cliente.id,
+      numero: 4,
+      total: 12345,
+      validoAte: new Date(Date.now() + 15 * dia),
+      status: "respondido",
+      enviadoEm: new Date(Date.now() - 8 * dia),
+      statusAlteradoEm: new Date(Date.now() - 5 * dia),
+    },
+  });
+
   const token = randomBytes(32).toString("base64url");
   await prisma.sessao.create({
     data: {
@@ -121,7 +135,7 @@ async function criarEmpresa(letra: "A" | "B") {
       expiraEm: new Date(Date.now() + 3_600_000),
     },
   });
-  return { empresa: e, cliente, item, itemApagar, rascunho, enviado, comOpcoes, sessao: token };
+  return { empresa: e, cliente, item, itemApagar, rascunho, enviado, comOpcoes, respondido, sessao: token };
 }
 
 // ---------- ferramentas ----------
@@ -270,6 +284,28 @@ async function main() {
     await repetirComOutroId(page, acao, A.enviado.id, B.enviado.id);
     const bEnviado = await prisma.orcamento.findUniqueOrThrow({ where: { id: B.enviado.id } });
     registrar("A tenta marcar como respondido um orçamento da B", bEnviado.status === "enviado", `status da B: ${bEnviado.status}`);
+
+    // 3d2) retomar conversa: "Já retomei" e "Desfazer" repetidos com o orçamento da B
+    const cobrarComRetomar = await pagina(A.sessao, "/cobrar");
+    registrar(
+      "Cobrar hoje mostra “Retomar conversa” com o orçamento da A",
+      cobrarComRetomar.corpo.includes("Retomar conversa") && cobrarComRetomar.corpo.includes("nº <!-- -->4"),
+    );
+    await page.goto(`${BASE}/cobrar`, { waitUntil: "networkidle0" });
+    acao = await capturarAcao(page, clicarBotao("Já retomei"));
+    await repetirComOutroId(page, acao, A.respondido.id, B.respondido.id);
+    const bRetomado = await prisma.orcamento.findUniqueOrThrow({ where: { id: B.respondido.id } });
+    registrar("A tenta marcar “Já retomei” num orçamento da B", bRetomado.retomadoEm === null);
+
+    const agoraB = new Date(); // a B acabou de retomar: o "Desfazer" da A não pode mexer nisso
+    await prisma.orcamento.update({ where: { id: B.respondido.id }, data: { retomadoEm: agoraB } });
+    await page.waitForFunction(() => [...document.querySelectorAll("button")].some((b) => b.textContent?.includes("Desfazer")));
+    acao = await capturarAcao(page, clicarBotao("Desfazer"));
+    await repetirComOutroId(page, acao, A.respondido.id, B.respondido.id);
+    const aDesfeito = await prisma.orcamento.findUniqueOrThrow({ where: { id: A.respondido.id } });
+    const bDepois = await prisma.orcamento.findUniqueOrThrow({ where: { id: B.respondido.id } });
+    registrar("Desfazer volta o “Já retomei” da própria A", aDesfeito.retomadoEm === null);
+    registrar("A tenta desfazer o “Já retomei” da B", bDepois.retomadoEm?.getTime() === agoraB.getTime());
 
     // 3e) editar cliente
     await page.goto(`${BASE}/clientes/${A.cliente.id}`, { waitUntil: "networkidle0" });

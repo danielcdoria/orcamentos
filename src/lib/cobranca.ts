@@ -48,7 +48,7 @@ export async function marcarPerdidosVencidos(empresaId: string, prazoPerdido: nu
   const { count } = await prisma.orcamento.updateMany({
     // repete o filtro de status: se alguém marcou "respondido" nesse meio-tempo, não mexe
     where: { id: { in: vencidos }, empresaId, status: { in: STATUS_AGUARDANDO } },
-    data: { status: "perdido" },
+    data: { status: "perdido", statusAlteradoEm: new Date() },
   });
   return count;
 }

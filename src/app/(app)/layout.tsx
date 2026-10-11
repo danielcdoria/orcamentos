@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Settings, Users } from "lucide-react";
 import { exigirSessao } from "@/lib/auth";
-import { contarFila } from "@/lib/cobranca";
+import { contarPendencias } from "@/lib/retomar";
 import { prisma } from "@/lib/prisma";
 import { Menu } from "./menu";
 
@@ -24,7 +24,7 @@ const estiloAtalho =
 
 export default async function LayoutInterno({ children }: LayoutProps<"/">) {
   const { empresaId, empresaNome } = await exigirSessao();
-  const paraCobrar = await contarFila(empresaId); // número da bolinha vermelha
+  const paraCobrar = await contarPendencias(empresaId); // bolinha vermelha: cobrar + retomar
 
   return (
     <div className="flex min-h-dvh flex-col">
