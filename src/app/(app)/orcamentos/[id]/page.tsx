@@ -16,6 +16,8 @@ import { calcularMargem } from "@/lib/margem";
 import { organizar, resumoEscolha, somarIncluidos, temOpcoes } from "@/lib/opcoes";
 import { STATUS_AGUARDANDO } from "@/lib/status";
 import { estiloBotaoSecundario, estiloCartao, estiloTitulo } from "@/components/estilos";
+import { EditorProximoPasso } from "@/components/editor-proximo-passo";
+import { hojeNoFuso } from "@/lib/dia";
 
 // Tela INTERNA de um orçamento (exige login). Daqui se envia e se acompanha o orçamento.
 export default async function DetalheOrcamento(props: PageProps<"/orcamentos/[id]">) {
@@ -99,6 +101,26 @@ export default async function DetalheOrcamento(props: PageProps<"/orcamentos/[id
           <SeletorStatus id={o.id} status={o.status} />
         </div>
       </div>
+
+      {/* Negociação: depois que o cliente respondeu, o próximo passo (aparece na tela "Hoje") */}
+      {o.status === "respondido" && (
+        <section aria-label="Negociação" className={`${estiloCartao} flex flex-col gap-4 px-5 py-5`}>
+          <div>
+            <h2 className="text-lg font-semibold">Negociação</h2>
+            <p className="text-sm text-gray-600">O próximo passo aparece na tela “Hoje” no dia marcado.</p>
+          </div>
+          <EditorProximoPasso
+            orcamentoId={o.id}
+            hoje={hojeNoFuso()}
+            inicial={{
+              etapa: o.etapa,
+              proximoPasso: o.proximoPasso,
+              dia: o.proximoPassoEm ? hojeNoFuso(o.proximoPassoEm) : null,
+              vezDe: o.vezDe ?? "cliente",
+            }}
+          />
+        </section>
+      )}
 
       <div className={`${estiloCartao} px-5 py-5`}>
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1">

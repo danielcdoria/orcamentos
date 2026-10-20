@@ -215,8 +215,19 @@ export async function alterarStatus(orcamentoId: string, status: StatusOrcamento
           }),
         ]
       : []),
+    // Respondeu: a negociação começa na etapa "Interessado" (se ainda não tinha etapa)
+    ...(status === "respondido"
+      ? [
+          prisma.orcamento.updateMany({
+            where: { id: orcamentoId, empresaId, etapa: null },
+            data: { etapa: "interessado" },
+          }),
+        ]
+      : []),
   ]);
   revalidatePath("/orcamentos");
   revalidatePath(`/orcamentos/${orcamentoId}`);
   revalidatePath("/cobrar"); // "Mudar status" em Retomar conversa tira o cartão da lista
+  revalidatePath("/hoje");
+  revalidatePath("/funil");
 }

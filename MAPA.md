@@ -251,6 +251,27 @@ cada registro. Por isso estas regras são tão importantes.
    não aparecer uma enxurrada de Respondidos antigos de uma vez. Por isso os Respondidos
    anteriores a essa data contam os dias a partir dela, não da resposta real.
 
+### Passo 4b: a negociação (tela "Hoje" e Funil)
+Depois que o cliente responde (status **Respondido**), começa a negociação. Regras em
+`src/lib/negociacao.ts`; dias de calendário em `src/lib/dia.ts`; nomes das etapas em `src/lib/etapas.ts`.
+1. Ao virar Respondido (`alterarStatus` ou "O cliente já respondeu" em Cobrar hoje), a etapa
+   começa em **Interessado** (se ainda estiver vazia).
+2. Cada negociação tem: **etapa** (Interessado → Demonstração → Proposta enviada → Negociando),
+   **próximo passo** (texto), **dia** (`proximoPassoEm`, gravado ao meio-dia de Brasília) e
+   **com quem está** (`vezDe`: eu = a empresa deve algo; cliente = esperando o cliente).
+3. `/hoje` (`src/app/(app)/hoje/page.tsx`, a página inicial) agrupa os Respondidos por data
+   (`agruparHoje`): **Para hoje** (dia de hoje ou atrasado), **Sem próximo passo**, **Você deve**
+   (com você, data futura) e **Esperando o cliente** (data futura). Cada cartão
+   (`cartao-negociacao.tsx`) tem WhatsApp/demo, "Atualizar próximo passo" (abre
+   `editor-proximo-passo.tsx` ali mesmo) e "Encerrar" (Fechou / Perdeu).
+4. `salvarProximoPasso` (`hoje/actions.ts`) grava etapa, passo, dia e vez, e também
+   `retomadoEm` = agora. `encerrarNegociacao` muda para Fechado ou Perdido.
+5. A bolinha vermelha de "Hoje" no menu é `contarHoje`: os de **Para hoje**.
+6. Quem já tem dia de próximo passo **não** entra em "Retomar conversa" (Cobrar hoje): a data
+   já diz quando retomar. Os sem próximo passo continuam lá depois de X dias.
+7. `/funil` mostra as mesmas negociações agrupadas por etapa. A tela do orçamento também tem o
+   bloco "Negociação" (o mesmo editor) enquanto o status for Respondido.
+
 ### Passo 5: o painel
 `/painel` mostra o **valor parado** (soma dos orçamentos enviados ou abertos, de qualquer mês),
 e os enviados, fechados e a taxa de fechamento **entre os enviados no mês atual**. Embaixo:
@@ -272,7 +293,7 @@ e os enviados, fechados e a taxa de fechamento **entre os enviados no mês atual
 | `Sessao` | Cada login aberto (um celular, um computador). Guarda o hash do código do cookie. Dura 30 dias. |
 | `Cliente` | Os clientes da empresa: nome, telefone, observação e os dados de **prospecção** (todos opcionais): cidade, abordagem (`mensagem` = "Mensagem antes" ou `demo` = "Site pronto antes"), link da demonstração (sempre http/https), Instagram, nota e número de avaliações no Google. |
 | `Item` | O catálogo: descrição, preço (centavos), unidade e **custo padrão** (opcional, interno). |
-| `Orcamento` | Número, cliente, total (centavos; soma dos itens **incluídos**, muda quando o cliente troca uma opção), observação, validade, status, token do link, datas de envio/abertura, vezes aberto, `statusAlteradoEm` (última troca de status) e `retomadoEm` (último "Já retomei"). |
+| `Orcamento` | Número, cliente, total (centavos; soma dos itens **incluídos**, muda quando o cliente troca uma opção), observação, validade, status, token do link, datas de envio/abertura, vezes aberto, `statusAlteradoEm` (última troca de status), `retomadoEm` (último "Já retomei" ou próximo passo salvo) e a **negociação**: `etapa`, `proximoPasso`, `proximoPassoEm` (o dia) e `vezDe` (eu/cliente). |
 | `OrcamentoItem` | As linhas do orçamento: cópia da descrição e do preço, quantidade (aceita 2,5), subtotal, **custo por unidade** (opcional, interno: nunca vai para o cliente) e as opções: `tipo` (fixo, opcao, adicional), `grupo`, `padrao` e `incluido` (está no total agora). Orçamentos antigos: tudo fixo e incluído. |
 | `EscolhaCliente` | Cada vez que o cliente mudou as opções na página: resumo da escolha, total e quando. Máximo de 100 por orçamento. |
 | `Cobranca` | Cada cobrança feita: etapa (hoje sempre 1; antigas podem ter a 2) e quando. O texto (`mensagem`) só existe nas antigas, da época da mensagem pronta; as do "Já cobrei" ficam sem texto. Uma por etapa por orçamento. |
@@ -338,6 +359,9 @@ Pastas geradas (fora do git, não se edita): `node_modules/` (bibliotecas, recri
 | `mes.ts` | Início, fim e nome do mês atual em Brasília (para o painel). |
 | `busca.ts` | **Busca sem acento**: `normalizar` ("Matitaterê" → "matitatere"), `textoBate` (todas as palavras aparecem, em qualquer ordem) e `clienteBate` (nome + cidade, ou os dígitos do telefone). Usada nas listas e no novo orçamento; roda no servidor e no navegador. |
 | `prospeccao.ts` | Nomes das abordagens ("Mensagem antes", "Site pronto antes"), leitura da nota ("4,5"), das avaliações ("1.234") e do link da demo (põe `https://`, recusa o que não for http/https) e o resumo da lista ("Lumiar · Mensagem antes · 4,5 ★"). |
+| `negociacao.ts` | **A negociação** (passo 4b): busca os Respondidos com etapa e próximo passo, agrupa para a tela "Hoje" (para hoje, sem próximo passo, você deve, esperando o cliente) e conta a bolinha (`contarHoje`). |
+| `dia.ts` | Dias de calendário em Brasília como texto ("2026-10-22"): hoje, somar dias, diferença, conferir se é válido e o texto curto ("hoje", "amanhã", "qui 22/10"). Roda no servidor e no navegador. |
+| `etapas.ts` | Nome e cor de cada etapa da negociação e os rótulos de "com quem está" (Comigo / Com o cliente). |
 | `url.ts` | `urlBase()`: endereço do site para montar links. No `npm run dev`, troca `localhost` pelo IP do Mac na rede. |
 
 ### Componentes compartilhados (`src/components/`)
@@ -348,6 +372,7 @@ Pastas geradas (fora do git, não se edita): `node_modules/` (bibliotecas, recri
 | `aviso.tsx` | Aviso verde de "deu certo" quando a tela recebe `?ok=<código>`. Os códigos e textos ficam aqui. |
 | `bloco-margem.tsx` | Bloco "Só você vê": custo, lucro e margem colorida. Usado no novo orçamento e na tela do orçamento; nunca na página pública. |
 | `contato-cliente.tsx` | Atalhos de um cliente: **WhatsApp** (link `wa.me` sem mensagem, só com telefone válido) e **Ver demo** (abre o link da demo em outra aba). Na lista, só os ícones; na tela do cliente, botões com texto. |
+| `editor-proximo-passo.tsx` | Formulário da negociação: etapa, próximo passo, quando (Hoje / Amanhã / Em 3 dias / Em 1 semana ou uma data) e com quem está. Usado nos cartões de "Hoje" e na tela do orçamento. |
 | `estado-vazio.tsx` | Tela vazia padrão: ícone, título, explicação e botão. |
 
 ### Páginas e ações (`src/app/`)
@@ -373,9 +398,14 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 **Sistema interno, com login (`src/app/(app)/`)**
 | Arquivo | O que faz |
 |---|---|
-| `layout.tsx` | Exige login em todas as telas internas; topo com nome da empresa, Clientes e Ajustes; conta cobranças + retomar (`contarPendencias`) para a bolinha; troca o ícone da aba pelo logo da empresa. |
-| `menu.tsx` | Menu de 4 ícones (Orçamentos, Cobrar hoje, Catálogo, Painel): embaixo no celular, no topo no computador. Bolinha vermelha em Cobrar hoje. |
-| `page.tsx` | `/` só redireciona para `/orcamentos`. |
+| `layout.tsx` | Exige login em todas as telas internas; topo com nome da empresa, Clientes e Ajustes; conta cobranças + retomar (`contarPendencias`) e os próximos passos de hoje (`contarHoje`) para as bolinhas; troca o ícone da aba pelo logo da empresa. |
+| `menu.tsx` | Menu de 5 ícones (Hoje, Orçamentos, Cobrar hoje, Catálogo, Painel): embaixo no celular, no topo no computador. Bolinhas vermelhas em Hoje e em Cobrar hoje. |
+| `page.tsx` | `/` só redireciona para `/hoje`. |
+| `hoje/page.tsx` | **Hoje**, a página inicial: as negociações por data (passo 4b), com o atalho para Cobrar hoje no topo. |
+| `hoje/cartao-negociacao.tsx` | Um cartão de negociação (cliente, etapa, prazo, próximo passo, anotações do cliente) com "Atualizar próximo passo" e "Encerrar". Usado em Hoje e no Funil. |
+| `hoje/abas.tsx` | As abas "Por data" (Hoje) e "Por etapa (funil)". |
+| `hoje/actions.ts` | `salvarProximoPasso` e `encerrarNegociacao`. |
+| `funil/page.tsx` | **Funil**: as negociações agrupadas por etapa. |
 | `actions.ts` | `sair`: apaga a sessão. |
 | `orcamentos/page.tsx` | Lista de orçamentos (mais recentes primeiro), faixa de cobrança pendente, pílula de status e "Viu / Não viu". Busca e filtro **no servidor**, pelo endereço (`?busca=lumiar&status=enviado`): pelo nome do cliente (sem acento) ou pelo número. Pílulas de status com a contagem (Rascunho e Aberto só aparecem se houver algum). Mostra 100 por vez, com "Mostrando 100 de 340" e "Mostrar mais" (`?limite=`). |
 | `orcamentos/busca-orcamentos.tsx` | A barra de busca da lista: atualiza o endereço 0,3 s depois de parar de digitar (o servidor é que procura). |

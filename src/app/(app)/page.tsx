@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// A página inicial é a lista de orçamentos (primeiro item do menu).
+// A página inicial é "Hoje" (primeiro item do menu): o que fazer hoje nas negociações.
 export default function Inicio() {
-  redirect("/orcamentos");
+  redirect("/hoje");
 }

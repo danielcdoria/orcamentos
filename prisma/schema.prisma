@@ -159,6 +159,21 @@ enum StatusOrcamento {
   perdido
 }
 
+// Etapas da negociação, depois que o cliente respondeu (status "respondido").
+// Fechado e Perdido continuam sendo status.
+enum EtapaVenda {
+  interessado // respondeu e quer saber mais
+  demonstracao // a demonstração/amostra foi feita ou está sendo feita
+  proposta // a proposta com valores foi enviada
+  negociando // discutindo valor, condição, contrato
+}
+
+// De quem é a vez no próximo passo
+enum VezDe {
+  eu // a empresa precisa fazer algo (fazer site, mandar proposta)
+  cliente // esperando o cliente (cobrar na data)
+}
+
 model Orcamento {
   id         String          @id @default(cuid())
   empresaId  String
@@ -175,6 +190,13 @@ model Orcamento {
   // ganharam a data da migração (out/2026), para não aparecerem todos em "Retomar conversa".
   statusAlteradoEm DateTime  @default(now())
   retomadoEm       DateTime? // último "Já retomei" na seção Retomar conversa
+
+  // NEGOCIAÇÃO (tela "Hoje" e Funil; ver src/lib/negociacao.ts). Usado depois que o cliente
+  // responde: em que etapa a venda está, qual o próximo passo, quando e de quem é a vez.
+  etapa          EtapaVenda?
+  proximoPasso   String? // ex.: "Mandar o site com os ajustes"
+  proximoPassoEm DateTime? // o DIA do próximo passo (gravado ao meio-dia de Brasília)
+  vezDe          VezDe? // eu = a empresa deve algo; cliente = esperando o cliente
 
   // Código secreto do link público (/orcamento/<token>). O próprio banco sorteia
   // 64 caracteres aleatórios; é impossível adivinhar o link de outro orçamento.

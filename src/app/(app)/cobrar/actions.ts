@@ -57,6 +57,7 @@ export async function desfazerCobranca(cobrancaId: string) {
 
 function atualizarTelas(orcamentoId: string) {
   revalidatePath("/cobrar");
+  revalidatePath("/hoje");
   revalidatePath("/orcamentos");
   revalidatePath(`/orcamentos/${orcamentoId}`);
 }
@@ -64,10 +65,17 @@ function atualizarTelas(orcamentoId: string) {
 // "Marcar como respondido": tira da fila de cobrança.
 export async function marcarRespondido(orcamentoId: string) {
   const { empresaId } = await exigirSessao();
-  await prisma.orcamento.updateMany({
-    where: { id: orcamentoId, empresaId },
-    data: { status: "respondido", statusAlteradoEm: new Date() },
-  });
+  await prisma.$transaction([
+    prisma.orcamento.updateMany({
+      where: { id: orcamentoId, empresaId },
+      data: { status: "respondido", statusAlteradoEm: new Date() },
+    }),
+    // A negociação começa na etapa "Interessado" (tela Hoje)
+    prisma.orcamento.updateMany({
+      where: { id: orcamentoId, empresaId, etapa: null },
+      data: { etapa: "interessado" },
+    }),
+  ]);
   atualizarTelas(orcamentoId);
 }
 

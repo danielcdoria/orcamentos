@@ -213,7 +213,7 @@ async function main() {
 
   // 2) Nenhuma tela da A mostra dados da B
   // As buscas por "SECRETO" e pelo nº 2 (que as duas empresas têm) só podem achar o que é da A.
-  for (const caminho of ["/orcamentos", "/orcamentos?busca=SECRETO", "/orcamentos?busca=2&status=enviado", "/clientes", "/clientes/novo", "/catalogo", "/catalogo?busca=SECRETO", "/orcamentos/novo", "/cobrar", "/painel", "/configuracoes"]) {
+  for (const caminho of ["/orcamentos", "/orcamentos?busca=SECRETO", "/orcamentos?busca=2&status=enviado", "/clientes", "/clientes/novo", "/catalogo", "/catalogo?busca=SECRETO", "/orcamentos/novo", "/cobrar", "/hoje", "/funil", "/painel", "/configuracoes"]) {
     const r = await pagina(A.sessao, caminho);
     const mostraA = caminho === "/painel" || caminho === "/configuracoes" || r.corpo.includes("SECRETO-A");
     registrar(`Tela ${caminho} da A não mostra nada da B`, r.status === 200 && !r.corpo.includes("SECRETO-B") && mostraA, `HTTP ${r.status}`);
@@ -306,6 +306,18 @@ async function main() {
     const bDepois = await prisma.orcamento.findUniqueOrThrow({ where: { id: B.respondido.id } });
     registrar("Desfazer volta o “Já retomei” da própria A", aDesfeito.retomadoEm === null);
     registrar("A tenta desfazer o “Já retomei” da B", bDepois.retomadoEm?.getTime() === agoraB.getTime());
+
+    // 3d3) próximo passo da negociação (tela Hoje): salvar repetido com o orçamento da B
+    await page.goto(`${BASE}/hoje`, { waitUntil: "networkidle0" });
+    await clicarBotao("Definir próximo passo")();
+    await page.waitForSelector('input[name="proximoPasso"]');
+    await page.type('input[name="proximoPasso"]', "PASSO-DA-A");
+    acao = await capturarAcao(page, clicarBotao("Salvar próximo passo"));
+    await repetirComOutroId(page, acao, A.respondido.id, B.respondido.id);
+    const aPasso = await prisma.orcamento.findUniqueOrThrow({ where: { id: A.respondido.id } });
+    const bPasso = await prisma.orcamento.findUniqueOrThrow({ where: { id: B.respondido.id } });
+    registrar("Salvar o próximo passo grava na própria A", aPasso.proximoPasso === "PASSO-DA-A");
+    registrar("A tenta gravar o próximo passo num orçamento da B", bPasso.proximoPasso === null, `próximo passo da B: ${bPasso.proximoPasso}`);
 
     // 3e) editar cliente
     await page.goto(`${BASE}/clientes/${A.cliente.id}`, { waitUntil: "networkidle0" });

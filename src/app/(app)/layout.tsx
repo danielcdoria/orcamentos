@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Settings, Users } from "lucide-react";
 import { exigirSessao } from "@/lib/auth";
 import { contarPendencias } from "@/lib/retomar";
+import { contarHoje } from "@/lib/negociacao";
 import { prisma } from "@/lib/prisma";
 import { Menu } from "./menu";
 
@@ -24,17 +25,18 @@ const estiloAtalho =
 
 export default async function LayoutInterno({ children }: LayoutProps<"/">) {
   const { empresaId, empresaNome } = await exigirSessao();
-  const paraCobrar = await contarPendencias(empresaId); // bolinha vermelha: cobrar + retomar
+  // bolinhas vermelhas: cobrar + retomar, e os próximos passos de hoje/atrasados
+  const [paraCobrar, paraHoje] = await Promise.all([contarPendencias(empresaId), contarHoje(empresaId)]);
 
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-2 md:gap-6 md:px-5 md:py-3">
-          <span className="min-w-0 flex-1 truncate text-lg font-bold md:max-w-56 md:flex-none">
+          <span className="min-w-0 flex-1 truncate text-lg font-bold md:max-w-44 md:flex-none">
             {empresaNome}
           </span>
           {/* No computador o menu fica aqui no topo; no celular ele vai para o rodapé */}
-          <Menu paraCobrar={paraCobrar} />
+          <Menu paraCobrar={paraCobrar} paraHoje={paraHoje} />
           <div className="flex shrink-0 items-center gap-1 md:ml-auto">
             <Link href="/clientes" className={estiloAtalho}>
               <Users className="size-5" aria-hidden />

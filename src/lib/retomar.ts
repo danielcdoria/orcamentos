@@ -9,6 +9,7 @@ import { contarFila, diasDesde } from "@/lib/cobranca";
 // desde a data mais recente entre:
 //   - statusAlteradoEm (quando virou Respondido) e
 //   - retomadoEm (o último "Já retomei").
+// Quem tem data de próximo passo (tela "Hoje") não entra aqui: a data já diz quando retomar.
 // diasRetomar vazio = desligado. O sistema NUNCA marca Respondido como Perdido sozinho:
 // quem esfriou, a pessoa decide à mão ("Mudar status").
 // ============================================================================
@@ -30,7 +31,8 @@ export async function buscarRetomar(empresaId: string): Promise<ItemRetomar[]> {
   if (empresa.diasRetomar === null) return [];
 
   const respondidos = await prisma.orcamento.findMany({
-    where: { empresaId, status: "respondido" },
+    // Quem já tem data de próximo passo é acompanhado pela tela "Hoje" (src/lib/negociacao.ts)
+    where: { empresaId, status: "respondido", proximoPassoEm: null },
     select: {
       id: true,
       numero: true,
