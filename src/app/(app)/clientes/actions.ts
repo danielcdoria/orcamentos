@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LISTA_ABORDAGEM, lerAvaliacoes, lerLinkDemo, lerNota } from "@/lib/prospeccao";
+import { areaParaGravar } from "@/lib/area";
 
 // Em caso de erro, devolvemos também o que foi digitado ("valores"), porque o React
 // limpa o formulário depois de enviar. Assim a pessoa não precisa digitar tudo de novo.
@@ -75,7 +76,8 @@ export async function salvarCliente(
     redirect("/clientes?ok=cliente-salvo");
   }
 
-  const novo = await prisma.cliente.create({ data: { ...dados, empresaId } });
+  // Cliente novo entra na área escolhida no topo (Pousadas ou Marcenarias)
+  const novo = await prisma.cliente.create({ data: { ...dados, empresaId, area: await areaParaGravar(empresaId) } });
   revalidatePath("/clientes");
   if (voltar === "orcamento") redirect(`/orcamentos/novo?cliente=${novo.id}`);
   redirect("/clientes?ok=cliente-salvo");

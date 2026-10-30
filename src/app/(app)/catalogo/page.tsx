@@ -6,6 +6,7 @@ import { formatarCentavos } from "@/lib/dinheiro";
 import { estiloBotao, estiloBotaoSecundario, estiloCampo, estiloCartao, estiloTitulo } from "@/components/estilos";
 import { EstadoVazio } from "@/components/estado-vazio";
 import { Aviso } from "@/components/aviso";
+import { filtroArea } from "@/lib/area";
 
 // A busca usa o próprio endereço: /catalogo?busca=lona
 // Assim ela funciona sem JavaScript e dá para voltar com o botão do navegador.
@@ -14,15 +15,17 @@ export default async function PaginaCatalogo(props: PageProps<"/catalogo">) {
   const { busca, ok } = await props.searchParams;
   const termo = typeof busca === "string" ? busca.trim() : "";
 
+  const daArea = await filtroArea(empresaId); // com áreas ligadas, só os itens da área escolhida
   const [itens, totalNoCatalogo] = await Promise.all([
     prisma.item.findMany({
       where: {
         empresaId,
+        ...daArea,
         ...(termo && { descricao: { contains: termo, mode: "insensitive" } }),
       },
       orderBy: { descricao: "asc" },
     }),
-    prisma.item.count({ where: { empresaId } }),
+    prisma.item.count({ where: { empresaId, ...daArea } }),
   ]);
 
   return (

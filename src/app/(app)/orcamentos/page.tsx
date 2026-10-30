@@ -13,6 +13,7 @@ import { estiloBotao, estiloBotaoSecundario, estiloCartao, estiloTitulo } from "
 import { SeletorStatus } from "@/components/seletor-status";
 import { EstadoVazio } from "@/components/estado-vazio";
 import { BuscaOrcamentos } from "./busca-orcamentos";
+import { filtroArea, filtroAreaOrcamento } from "@/lib/area";
 
 const POR_PAGINA = 100;
 // Rascunho e Aberto quase não aparecem no uso de prospecção: só ganham pílula se houver algum.
@@ -59,7 +60,7 @@ export default async function PaginaOrcamentos(props: PageProps<"/orcamentos">) 
   let filtroBusca: Prisma.OrcamentoWhereInput = {};
   if (normalizar(busca)) {
     const clientes = await prisma.cliente.findMany({
-      where: { empresaId },
+      where: { empresaId, ...(await filtroArea(empresaId)) },
       select: { id: true, nome: true, telefone: true, cidade: true },
     });
     const ids = clientes.filter((c) => clienteBate(c, busca)).map((c) => c.id);
@@ -67,11 +68,12 @@ export default async function PaginaOrcamentos(props: PageProps<"/orcamentos">) 
     const numero = /^\d{1,9}$/.test(numeroDigitado) ? Number(numeroDigitado) : null;
     filtroBusca = { OR: [{ clienteId: { in: ids } }, ...(numero !== null ? [{ numero }] : [])] };
   }
-  const filtroBase: Prisma.OrcamentoWhereInput = { empresaId, ...filtroBusca };
+  const daArea = await filtroAreaOrcamento(empresaId); // com áreas ligadas, só a área escolhida
+  const filtroBase: Prisma.OrcamentoWhereInput = { empresaId, ...daArea, ...filtroBusca };
 
   const [porStatus, totalDaEmpresa] = await Promise.all([
     prisma.orcamento.groupBy({ by: ["status"], where: filtroBase, _count: { _all: true } }),
-    prisma.orcamento.count({ where: { empresaId } }),
+    prisma.orcamento.count({ where: { empresaId, ...daArea } }),
   ]);
   const contagem = Object.fromEntries(porStatus.map((g) => [g.status, g._count._all])) as Partial<
     Record<StatusOrcamento, number>

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { exigirSessao } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { lerReais, VALOR_MAXIMO } from "@/lib/dinheiro";
+import { areaParaGravar } from "@/lib/area";
 
 // Em caso de erro, devolvemos também o que foi digitado ("valores"), porque o React
 // limpa o formulário depois de enviar. Assim a pessoa não precisa digitar tudo de novo.
@@ -44,7 +45,7 @@ export async function salvarItem(
     const { count } = await prisma.item.updateMany({ where: { id, empresaId }, data: dados });
     if (count === 0) return falhar("Item não encontrado.");
   } else {
-    await prisma.item.create({ data: { ...dados, empresaId } });
+    await prisma.item.create({ data: { ...dados, empresaId, area: await areaParaGravar(empresaId) } });
   }
 
   revalidatePath("/catalogo");

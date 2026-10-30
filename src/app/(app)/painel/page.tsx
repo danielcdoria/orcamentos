@@ -8,6 +8,7 @@ import { LISTA_STATUS, STATUS, STATUS_AGUARDANDO } from "@/lib/status";
 import { ABORDAGEM, LISTA_ABORDAGEM } from "@/lib/prospeccao";
 import type { Abordagem, StatusOrcamento } from "@/generated/prisma/enums";
 import { estiloCartao, estiloTitulo } from "@/components/estilos";
+import { filtroArea, filtroAreaOrcamento } from "@/lib/area";
 
 // PAINEL: os quatro números do mês, o funil de todos os tempos e a comparação das abordagens.
 // O mais importante é o "valor parado": é o dinheiro que está na mesa esperando resposta,
@@ -29,7 +30,9 @@ export default async function Painel() {
   });
   await marcarPerdidosVencidos(empresaId, empresa.prazoPerdido);
 
-  const doMes = { empresaId, enviadoEm: { gte: inicio, lt: fim } };
+  // Com áreas ligadas, tudo aqui é só da área escolhida (src/lib/area.ts)
+  const [daArea, clientesDaArea] = await Promise.all([filtroAreaOrcamento(empresaId), filtroArea(empresaId)]);
+  const doMes = { empresaId, ...daArea, enviadoEm: { gte: inicio, lt: fim } };
   // Comparação das abordagens, contando POUSADAS (clientes), não orçamentos: quem tem dois
   // orçamentos por engano conta uma vez só.
   // - abordada: tem pelo menos um orçamento que não é rascunho
@@ -37,6 +40,7 @@ export default async function Painel() {
   //   histórico de status, então quem respondeu e depois virou Perdido não conta)
   const comOrcamento = (status: StatusOrcamento[]) => ({
     empresaId,
+    ...clientesDaArea,
     orcamentos: { some: { status: { in: status } } },
   });
   const [enviados, fechados, parado, porStatus, abordadas, responderam] = await Promise.all([
@@ -45,11 +49,11 @@ export default async function Painel() {
     prisma.orcamento.count({ where: { ...doMes, status: "fechado" } }),
     // Parado = tudo que está esperando resposta agora, de qualquer mês
     prisma.orcamento.aggregate({
-      where: { empresaId, status: { in: STATUS_AGUARDANDO } },
+      where: { empresaId, ...daArea, status: { in: STATUS_AGUARDANDO } },
       _sum: { total: true },
       _count: true,
     }),
-    prisma.orcamento.groupBy({ by: ["status"], where: { empresaId }, _count: { _all: true } }),
+    prisma.orcamento.groupBy({ by: ["status"], where: { empresaId, ...daArea }, _count: { _all: true } }),
     prisma.cliente.groupBy({
       by: ["abordagem"],
       where: comOrcamento(LISTA_STATUS.filter((s) => s !== "rascunho")),

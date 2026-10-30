@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { contarFila, diasDesde } from "@/lib/cobranca";
+import { filtroAreaOrcamento } from "@/lib/area";
 
 // ============================================================================
 // RETOMAR CONVERSA
@@ -32,7 +33,7 @@ export async function buscarRetomar(empresaId: string): Promise<ItemRetomar[]> {
 
   const respondidos = await prisma.orcamento.findMany({
     // Quem já tem data de próximo passo é acompanhado pela tela "Hoje" (src/lib/negociacao.ts)
-    where: { empresaId, status: "respondido", proximoPassoEm: null },
+    where: { empresaId, status: "respondido", proximoPassoEm: null, ...(await filtroAreaOrcamento(empresaId)) },
     select: {
       id: true,
       numero: true,

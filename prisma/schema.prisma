@@ -22,6 +22,9 @@ model Empresa {
   telefone          String?
   condicaoPagamento String? // ex.: "50% na aprovação, 50% na entrega"
   diasValidade      Int      @default(15) // validade padrão dos orçamentos, em dias
+  // Liga as duas áreas (Pousadas e Marcenarias) com o botão de trocar no topo.
+  // Desligado, a empresa vê tudo junto, como sempre foi (src/lib/area.ts).
+  usaAreas          Boolean  @default(false)
   criadoEm          DateTime @default(now())
 
   // PIX (opcional): só é MOSTRADO na página do orçamento, com um botão de copiar a chave.
@@ -115,11 +118,19 @@ model Cliente {
   instagram        String? // o @ ou o link, como foi digitado
   notaGoogle       Float? // nota no Google, de 0 a 5 (ex.: 4.5). Não é dinheiro, então Float serve
   avaliacoesGoogle Int? // quantas avaliações no Google (ex.: 562)
+  area             Area     @default(pousada) // em qual área aparece (só conta se a empresa usaAreas)
 
   empresa    Empresa     @relation(fields: [empresaId], references: [id])
   orcamentos Orcamento[]
 
   @@index([empresaId, nome])
+}
+
+// As áreas do sistema: cada cliente e cada item do catálogo pertence a uma.
+// Os orçamentos seguem a área do cliente.
+enum Area {
+  pousada
+  marcenaria
 }
 
 // Como foi o primeiro contato com o cliente (prospecção).
@@ -138,6 +149,7 @@ model Item {
   // Custo padrão por unidade, em centavos (opcional). INFORMAÇÃO INTERNA: sugerido ao
   // montar o orçamento e usado no cálculo de margem; nunca vai para o cliente final.
   custo     Int?
+  area      Area   @default(pousada) // em qual área aparece (só conta se a empresa usaAreas)
 
   empresa Empresa @relation(fields: [empresaId], references: [id])
 

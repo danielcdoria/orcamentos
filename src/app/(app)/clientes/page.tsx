@@ -6,13 +6,14 @@ import { estiloBotao, estiloTitulo } from "@/components/estilos";
 import { EstadoVazio } from "@/components/estado-vazio";
 import { Aviso } from "@/components/aviso";
 import { ListaClientes } from "./lista-clientes";
+import { filtroArea } from "@/lib/area";
 
 export default async function PaginaClientes(props: PageProps<"/clientes">) {
   const { empresaId } = await exigirSessao();
   const { ok } = await props.searchParams;
 
   const clientes = await prisma.cliente.findMany({
-    where: { empresaId },
+    where: { empresaId, ...(await filtroArea(empresaId)) }, // com áreas ligadas, só a área escolhida
     orderBy: { nome: "asc" },
     select: {
       id: true,

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { estiloTitulo } from "@/components/estilos";
 import { EstadoVazio } from "@/components/estado-vazio";
 import { FormOrcamento } from "./form-orcamento";
+import { filtroArea } from "@/lib/area";
 
 export default async function NovoOrcamento(props: PageProps<"/orcamentos/novo">) {
   const { empresaId } = await exigirSessao();
@@ -13,14 +14,15 @@ export default async function NovoOrcamento(props: PageProps<"/orcamentos/novo">
   // Para catálogos de pequenas empresas (algumas centenas de itens) isso é leve.
   // Os clientes também vão inteiros (nome e telefone), para a busca do cliente ser
   // instantânea. Mesmo com milhares de clientes, são poucos KB.
+  const daArea = await filtroArea(empresaId); // com áreas ligadas, só clientes e itens da área
   const [clientes, catalogo, emAndamento] = await Promise.all([
     prisma.cliente.findMany({
-      where: { empresaId },
+      where: { empresaId, ...daArea },
       orderBy: { nome: "asc" },
       select: { id: true, nome: true, telefone: true, cidade: true },
     }),
     prisma.item.findMany({
-      where: { empresaId },
+      where: { empresaId, ...daArea },
       orderBy: { descricao: "asc" },
       select: { id: true, descricao: true, preco: true, unidade: true, custo: true },
     }),

@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { STATUS_AGUARDANDO } from "@/lib/status";
+import { filtroAreaOrcamento } from "@/lib/area";
 
 // ============================================================================
 // A REGRA DE COBRANÇA (uma cobrança só), enquanto o status for "enviado" ou "aberto":
@@ -71,7 +72,12 @@ async function orcamentosDevidos(empresaId: string) {
   await marcarPerdidosVencidos(empresaId, empresa.prazoPerdido);
 
   const candidatos = await prisma.orcamento.findMany({
-    where: { empresaId, status: { in: STATUS_AGUARDANDO }, enviadoEm: { not: null } },
+    where: {
+      empresaId,
+      status: { in: STATUS_AGUARDANDO },
+      enviadoEm: { not: null },
+      ...(await filtroAreaOrcamento(empresaId)),
+    },
     include: {
       cliente: { select: { nome: true, telefone: true } },
       _count: { select: { escolhas: true, cobrancas: true } },

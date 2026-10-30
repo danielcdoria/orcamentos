@@ -6,6 +6,8 @@ import { contarPendencias } from "@/lib/retomar";
 import { contarHoje } from "@/lib/negociacao";
 import { prisma } from "@/lib/prisma";
 import { Menu } from "./menu";
+import { SeletorArea } from "./seletor-area";
+import { AREAS, areaAtual } from "@/lib/area";
 
 // Os parênteses em "(app)" criam um GRUPO: a pasta não aparece no endereço.
 // Serve para aplicar este layout, que exige login, a todas as páginas internas de uma vez.
@@ -26,15 +28,26 @@ const estiloAtalho =
 export default async function LayoutInterno({ children }: LayoutProps<"/">) {
   const { empresaId, empresaNome } = await exigirSessao();
   // bolinhas vermelhas: cobrar + retomar, e os próximos passos de hoje/atrasados
-  const [paraCobrar, paraHoje] = await Promise.all([contarPendencias(empresaId), contarHoje(empresaId)]);
+  const [paraCobrar, paraHoje, area] = await Promise.all([
+    contarPendencias(empresaId),
+    contarHoje(empresaId),
+    areaAtual(empresaId),
+  ]);
 
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-2 md:gap-6 md:px-5 md:py-3">
-          <span className="min-w-0 flex-1 truncate text-lg font-bold md:max-w-44 md:flex-none">
-            {empresaNome}
-          </span>
+          {/* Com áreas ligadas, o botão de área ocupa o lugar do nome (não cabem os dois) */}
+          {area ? (
+            <div className="flex-1 md:flex-none">
+              <SeletorArea atual={area} areas={AREAS} />
+            </div>
+          ) : (
+            <span className="min-w-0 flex-1 truncate text-lg font-bold md:max-w-44 md:flex-none">
+              {empresaNome}
+            </span>
+          )}
           {/* No computador o menu fica aqui no topo; no celular ele vai para o rodapé */}
           <Menu paraCobrar={paraCobrar} paraHoje={paraHoje} />
           <div className="flex shrink-0 items-center gap-1 md:ml-auto">

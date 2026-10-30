@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { diasDesde } from "@/lib/cobranca";
 import type { EtapaVenda, VezDe } from "@/generated/prisma/enums";
 import { diferencaDias, hojeNoFuso } from "@/lib/dia";
+import { filtroAreaOrcamento } from "@/lib/area";
 
 // ============================================================================
 // NEGOCIAÇÃO: o que acontece depois que o cliente responde (status "respondido").
@@ -43,7 +44,7 @@ export type GruposHoje = {
 
 export async function buscarNegociacoes(empresaId: string): Promise<Negociacao[]> {
   const lista = await prisma.orcamento.findMany({
-    where: { empresaId, status: "respondido" },
+    where: { empresaId, status: "respondido", ...(await filtroAreaOrcamento(empresaId)) },
     select: {
       id: true,
       numero: true,

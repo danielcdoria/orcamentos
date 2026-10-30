@@ -287,12 +287,12 @@ e os enviados, fechados e a taxa de fechamento **entre os enviados no mês atual
 
 | Tabela | O que guarda |
 |---|---|
-| `Empresa` | Cada empresa cliente: nome, telefone, condição de pagamento, dias de validade, mensagem de envio, prazos de cobrança (`prazoCobranca1` = cobrar X dias depois do envio; `prazoPerdido` = virar perdido X dias depois da cobrança; `prazoCobranca2` ficou sem uso; `diasRetomar` = retomar quem respondeu depois de X dias, vazio = desligado), os 4 modelos de mensagem de cobrança (guardados, mas **não usados** desde out/2026) e o Pix (chave e nome do recebedor, opcionais, só para exibir). |
+| `Empresa` | Cada empresa cliente: nome, telefone, condição de pagamento, dias de validade, mensagem de envio, prazos de cobrança (`prazoCobranca1` = cobrar X dias depois do envio; `prazoPerdido` = virar perdido X dias depois da cobrança; `prazoCobranca2` ficou sem uso; `diasRetomar` = retomar quem respondeu depois de X dias, vazio = desligado), os 4 modelos de mensagem de cobrança (guardados, mas **não usados** desde out/2026) o Pix (chave e nome do recebedor, opcionais, só para exibir) e `usaAreas` (liga o botão Pousadas / Marcenarias; só a empresa de sites tem ligado). |
 | `EmpresaLogo` | A imagem do logo (PNG/JPG), separada para não pesar nas outras consultas. |
 | `Usuario` | O login da empresa (um por empresa): email, hash da senha, contador de tentativas erradas e bloqueio. |
 | `Sessao` | Cada login aberto (um celular, um computador). Guarda o hash do código do cookie. Dura 30 dias. |
-| `Cliente` | Os clientes da empresa: nome, telefone, observação e os dados de **prospecção** (todos opcionais): cidade, abordagem (`mensagem` = "Mensagem antes" ou `demo` = "Site pronto antes"), link da demonstração (sempre http/https), Instagram, nota e número de avaliações no Google. |
-| `Item` | O catálogo: descrição, preço (centavos), unidade e **custo padrão** (opcional, interno). |
+| `Cliente` | Os clientes da empresa: nome, telefone, observação e os dados de **prospecção** (todos opcionais): cidade, abordagem (`mensagem` = "Mensagem antes" ou `demo` = "Site pronto antes"), link da demonstração (sempre http/https), Instagram, nota e número de avaliações no Google, e a **área** (`pousada` ou `marcenaria`). |
+| `Item` | O catálogo: descrição, preço (centavos), unidade, **custo padrão** (opcional, interno) e a **área**. |
 | `Orcamento` | Número, cliente, total (centavos; soma dos itens **incluídos**, muda quando o cliente troca uma opção), observação, validade, status, token do link, datas de envio/abertura, vezes aberto, `statusAlteradoEm` (última troca de status), `retomadoEm` (último "Já retomei" ou próximo passo salvo) e a **negociação**: `etapa`, `proximoPasso`, `proximoPassoEm` (o dia) e `vezDe` (eu/cliente). |
 | `OrcamentoItem` | As linhas do orçamento: cópia da descrição e do preço, quantidade (aceita 2,5), subtotal, **custo por unidade** (opcional, interno: nunca vai para o cliente) e as opções: `tipo` (fixo, opcao, adicional), `grupo`, `padrao` e `incluido` (está no total agora). Orçamentos antigos: tudo fixo e incluído. |
 | `EscolhaCliente` | Cada vez que o cliente mudou as opções na página: resumo da escolha, total e quando. Máximo de 100 por orçamento. |
@@ -341,6 +341,7 @@ Pastas geradas (fora do git, não se edita): `node_modules/` (bibliotecas, recri
 ### Regras e utilidades (`src/lib/`)
 | Arquivo | O que faz |
 |---|---|
+| `area.ts` | **Áreas (Pousadas / Marcenarias).** `areaAtual` lê a área escolhida (cookie `area`) se a empresa tem `usaAreas`; `filtroArea` (clientes e itens) e `filtroAreaOrcamento` (orçamentos, pela área do cliente) filtram as telas; `areaParaGravar` diz em qual área entra um cliente ou item novo. Empresa sem áreas: não filtra nada. |
 | `auth.ts` | `exigirSessao()`: confere o login e devolve `empresaId` e nome da empresa. **A porta de entrada de tudo.** |
 | `sessao.ts` | Cria, lê e apaga a sessão (cookie `sessao` + tabela `Sessao`). Cookie invisível ao JavaScript; exige https quando a conexão é https (Vercel). |
 | `senha.ts` | Hash da senha com scrypt (custo recomendado pela OWASP) e conferência no login. Aceita e manda refazer hashes antigos. |
@@ -398,7 +399,8 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 **Sistema interno, com login (`src/app/(app)/`)**
 | Arquivo | O que faz |
 |---|---|
-| `layout.tsx` | Exige login em todas as telas internas; topo com nome da empresa, Clientes e Ajustes; conta cobranças + retomar (`contarPendencias`) e os próximos passos de hoje (`contarHoje`) para as bolinhas; troca o ícone da aba pelo logo da empresa. |
+| `layout.tsx` | Exige login em todas as telas internas; topo com nome da empresa (ou o botão de área, se ela usa áreas), Clientes e Ajustes; conta cobranças + retomar (`contarPendencias`) e os próximos passos de hoje (`contarHoje`) para as bolinhas; troca o ícone da aba pelo logo da empresa. |
+| `seletor-area.tsx` | O botão **Pousadas / Marcenarias** do topo (só para empresas com `usaAreas`). Chama `trocarArea` em `actions.ts`, que grava o cookie e recarrega as telas. |
 | `menu.tsx` | Menu de 5 ícones (Hoje, Orçamentos, Cobrar hoje, Catálogo, Painel): embaixo no celular, no topo no computador. Bolinhas vermelhas em Hoje e em Cobrar hoje. |
 | `page.tsx` | `/` só redireciona para `/hoje`. |
 | `hoje/page.tsx` | **Hoje**, a página inicial: as negociações por data (passo 4b), com o atalho para Cobrar hoje no topo. |
@@ -406,7 +408,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `hoje/abas.tsx` | As abas "Por data" (Hoje) e "Por etapa (funil)". |
 | `hoje/actions.ts` | `salvarProximoPasso` e `encerrarNegociacao`. |
 | `funil/page.tsx` | **Funil**: as negociações agrupadas por etapa. |
-| `actions.ts` | `sair`: apaga a sessão. |
+| `actions.ts` | `sair`: apaga a sessão. `trocarArea`: grava a área escolhida no botão do topo (cookie `area`). |
 | `orcamentos/page.tsx` | Lista de orçamentos (mais recentes primeiro), faixa de cobrança pendente, pílula de status e "Viu / Não viu". Busca e filtro **no servidor**, pelo endereço (`?busca=lumiar&status=enviado`): pelo nome do cliente (sem acento) ou pelo número. Pílulas de status com a contagem (Rascunho e Aberto só aparecem se houver algum). Mostra 100 por vez, com "Mostrando 100 de 340" e "Mostrar mais" (`?limite=`). |
 | `orcamentos/busca-orcamentos.tsx` | A barra de busca da lista: atualiza o endereço 0,3 s depois de parar de digitar (o servidor é que procura). |
 | `orcamentos/novo/page.tsx` | Tela de novo orçamento (explica o que falta se não houver cliente ou catálogo). Manda ao formulário os clientes (nome e telefone) e os orçamentos não perdidos de cada um, para o aviso de duplicado. |
