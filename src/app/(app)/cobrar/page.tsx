@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { exigirSessao } from "@/lib/auth";
 import { buscarFila } from "@/lib/cobranca";
 import { buscarRetomar } from "@/lib/retomar";
@@ -15,7 +16,12 @@ export default async function CobrarHoje() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className={estiloTitulo}>Cobrar hoje</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className={estiloTitulo}>Cobrar hoje</h1>
+          <Link href="/importar" className="text-base font-semibold text-marca underline-offset-2 hover:underline">
+          Importar lote
+        </Link>
+        </div>
         {fila.length > 0 && (
           <p className="mt-1 text-base text-gray-600">
             {fila.length === 1

@@ -21,7 +21,12 @@ export default async function Hoje() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
-        <h1 className={estiloTitulo}>Hoje</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className={estiloTitulo}>Hoje</h1>
+          <Link href="/importar" className="text-base font-semibold text-marca underline-offset-2 hover:underline">
+          Importar lote
+        </Link>
+        </div>
         <AbasNegociacao ativa="hoje" />
       </div>
 

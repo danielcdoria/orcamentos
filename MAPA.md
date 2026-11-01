@@ -403,6 +403,7 @@ Pastas entre parênteses, como `(app)`, **não** aparecem no endereço; entre co
 | `seletor-area.tsx` | O botão **Pousadas / Marcenarias** do topo (só para empresas com `usaAreas`). Chama `trocarArea` em `actions.ts`, que grava o cookie e recarrega as telas. |
 | `menu.tsx` | Menu de 5 ícones (Hoje, Orçamentos, Cobrar hoje, Catálogo, Painel): embaixo no celular, no topo no computador. Bolinhas vermelhas em Hoje e em Cobrar hoje. |
 | `page.tsx` | `/` só redireciona para `/hoje`. |
+| `importar/page.tsx`, `importar/form-importar.tsx`, `importar/actions.ts` | **Importar lote** (link em Hoje e Cobrar hoje): cola uma lista (nome \| telefone \| cidade \| nota \| avaliações \| link da demonstração \| observação), escolhe o item do catálogo e `importarLote` cria cada cliente (na área ativa, abordagem "Mensagem antes") com um orçamento já **Enviado**, tudo numa transação. Pula telefone já cadastrado (qualquer área) e linhas com erro, e diz quais. Máximo de 50 linhas. |
 | `hoje/page.tsx` | **Hoje**, a página inicial: as negociações por data (passo 4b), com o atalho para Cobrar hoje no topo. |
 | `hoje/cartao-negociacao.tsx` | Um cartão de negociação (cliente, etapa, prazo, próximo passo, anotações do cliente) com "Atualizar próximo passo" e "Encerrar". Usado em Hoje e no Funil. |
 | `hoje/abas.tsx` | As abas "Por data" (Hoje) e "Por etapa (funil)". |
